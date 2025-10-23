@@ -1,125 +1,118 @@
-"use client"
+"use client";
 
 import { useState } from "react";
 import { Heart, Share2, ChevronDown, Book, Star, ChevronUp, Check } from "lucide-react";
 
+interface ProductAttribute {
+    name: string;
+    value: string;
+}
+
+interface ProductOption {
+    name: string;
+    values: string[];
+}
+
+interface ProductBrand {
+    _id: string;
+    name: string;
+    image: string;
+}
+
+interface ProductCategory {
+    _id: string;
+    name: string;
+}
+
+interface Product {
+    _id: string;
+    name: string;
+    slug: string;
+    description: string;
+    shortDescription: string;
+    price: number;
+    oldPrice: number;
+    sku: string;
+    stock: number;
+    brand: ProductBrand;
+    category: ProductCategory;
+    thumbnail: string;
+    images: string[];
+    attributes: ProductAttribute[];
+    options: ProductOption[];
+    rating: number;
+    reviewCount: number;
+    isActive: boolean;
+    isFeatured: boolean;
+    isTodayDeal: boolean;
+    isComingSoon: boolean;
+    isCouponDeal: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
 type Coupon = {
-  id: number;
-  code: string;
-  discount: string;
-  description: string;
+    id: number;
+    code: string;
+    discount: string;
+    description: string;
 };
 
-// Coupon data
 const coupons = [
     { id: 1, code: "SAVE20", discount: "20%", description: "Get 20% off on electronics" },
     { id: 2, code: "WELCOME15", discount: "15%", description: "Welcome offer - 15% discount" },
 ];
 
-// Export products array to be used in RelatedProducts
-export const products = [
+const reviews = [
     {
-        name: "Axxen U3 Ultra Micro SD Card",
-        image: "/coupondeal/deal1.png",
-        price: "LKR 1,617.00",
-        oldPrice: "LKR 3,000.00",
-        categoryName: "Electronics",
-        brandName: "Axxen",
-        brandLogo: "https://api.builder.io/api/v1/image/assets/TEMP/6786a2fa7a22a5c9163624da40ed4d9eb99770b7?width=180",
-        rating: 4.5,
-        reviewCount: 229,
-        stock: 20,
-        inStock: true,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: [
-            { label: "Color", value: "Black", label2: "Model", value2: "XYZ-123" },
-            { label: "Capacity", value: "64GB", label2: "Speed Class", value2: "U3" },
-            { label: "Interface", value: "SD", label2: "Max Speed", value2: "100MB/s" },
-        ],
-        galleryImages: [
-            "https://api.builder.io/api/v1/image/assets/TEMP/ada6fb48659a43c87b26b7782ed28ba03e0b5931?width=800",
-            "https://api.builder.io/api/v1/image/assets/TEMP/6786a2fa7a22a5c9163624da40ed4d9eb99770b7?width=180",
-        ],
-        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-        options: ["64GB", "128GB", "256GB", "small", "medium", "large", "x-large"],
-        availability: ["In Stock", "offers", "pre-order"],
-        couponId: 1,
+        id: 1,
+        userName: "John Tyler",
+        userAvatar:
+            "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
+        rating: 5,
+        date: "June 19, 2025",
+        productVariant: "128GB",
+        reviewText:
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+    },
+    {
+        id: 2,
+        userName: "John Tyler",
+        userAvatar:
+            "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
+        rating: 5,
+        date: "August 19, 2025",
+        productVariant: "64GB",
+        reviewText:
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
     },
 ];
 
-export default function ProductDetails() {
+const ratingBreakdown = [
+    { stars: 5, percentage: 60, width: "60%" },
+    { stars: 4, percentage: 20, width: "20%" },
+    { stars: 3, percentage: 10, width: "10%" },
+    { stars: 2, percentage: 5, width: "5%" },
+    { stars: 1, percentage: 5, width: "5%" },
+];
+
+interface ProductDetailsProps {
+    product: Product;
+}
+
+export default function ProductDetails({ product }: ProductDetailsProps) {
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
-    const [selectedOption, setSelectedOption] = useState("64GB");
+    const [selectedOption, setSelectedOption] = useState(product.options?.[0]?.values?.[0] || "");
     const [couponCode, setCouponCode] = useState("");
-const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+    const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
     const [couponError, setCouponError] = useState("");
     const [activeTab, setActiveTab] = useState("description");
     const [showAllReviews, setShowAllReviews] = useState(false);
 
-    const reviews = [
-        {
-            id: 1,
-            userName: "John Tyler",
-            userAvatar: "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
-            rating: 5,
-            date: "June 19, 2025",
-            productVariant: "128GB",
-            reviewText: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        },
-        {
-            id: 2,
-            userName: "John Tyler",
-            userAvatar: "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
-            rating: 5,
-            date: "August 19, 2025",
-            productVariant: "64GB",
-            reviewText: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        },
-        {
-            id: 3,
-            userName: "John Tyler",
-            userAvatar: "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
-            rating: 5,
-            date: "October 19, 2025",
-            productVariant: "256GB",
-            reviewText: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        },
-        {
-            id: 4,
-            userName: "John Tyler",
-            userAvatar: "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
-            rating: 5,
-            date: "October 19, 2025",
-            productVariant: "256GB",
-            reviewText: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        },
-        {
-            id: 5,
-            userName: "John Tyler",
-            userAvatar: "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
-            rating: 5,
-            date: "October 19, 2025",
-            productVariant: "256GB",
-            reviewText: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        }
+    const productImages = product.images && product.images.length > 0 ? product.images : [product.thumbnail];
 
-    ];
-
-    const ratingBreakdown = [
-        { stars: 5, percentage: 60, width: "60%" },
-        { stars: 4, percentage: 20, width: "20%" },
-        { stars: 3, percentage: 10, width: "10%" },
-        { stars: 2, percentage: 5, width: "5%" },
-        { stars: 1, percentage: 5, width: "5%" },
-    ];
-
-    const currentProduct = products[0];
-    const specifications = currentProduct.specifications;
-    const productImages = currentProduct.galleryImages;
-
-     const handleApplyCoupon = () => {
+    const handleApplyCoupon = () => {
         setCouponError("");
         setAppliedCoupon(null);
 
@@ -128,8 +121,8 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
             return;
         }
 
-        const coupon = coupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
-        
+        const coupon = coupons.find((c) => c.code.toUpperCase() === couponCode.toUpperCase());
+
         if (coupon) {
             setAppliedCoupon(coupon);
             setCouponCode("");
@@ -137,6 +130,20 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
             setCouponError("Invalid coupon code");
         }
     };
+
+    // dynamically create specifications
+    const specifications =
+        product.attributes && product.attributes.length > 0
+            ? product.attributes.map((attr) => ({
+                label: attr.name,
+                value: attr.value,
+                label2: "",
+                value2: "",
+            }))
+            : [
+                { label: "Brand", value: product.brand.name, label2: "Category", value2: product.category.name },
+                { label: "SKU", value: product.sku, label2: "Stock", value2: product.stock.toString() },
+            ];
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -174,9 +181,9 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                         {/* Brand and Actions */}
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex flex-col items-start gap-2 sm:gap-3">
-                                <img src={currentProduct.brandLogo} alt={currentProduct.brandName} className="h-12 sm:h-16 " />
+                                <img src={product.brand.image} alt={product.brand.name} className="h-12 sm:h-16 " />
                                 <span className="text-xs sm:text-sm text-brand-gray underline cursor-pointer mt-4">
-                                    Show All {currentProduct.brandName} products
+                                    Show All {product.brand.name} products
                                 </span>
                             </div>
                             <div className="flex gap-4 sm:gap-6">
@@ -190,11 +197,11 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                         </div>
 
                         {/* Product Name */}
-                        <h1 className="text-2xl sm:text-3xl lg:text-3xl py-2 sm:py-4 font-semibold text-gray-900">{currentProduct.name}</h1>
+                        <h1 className="text-2xl sm:text-3xl lg:text-3xl py-2 sm:py-4 font-semibold text-gray-900">{product.name}</h1>
 
                         {/* Stock Status */}
                         <div className="flex items-center gap-2">
-                            {currentProduct.inStock ? (
+                            {product.stock ? (
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full border-2 border-brand-green flex items-center justify-center">
                                         <Check className="w-3 h-3 text-brand-green" />
@@ -215,12 +222,12 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                                     <>
                                         <span className="text-2xl sm:text-3xl font-bold text-gray-900">
                                             LKR {(
-                                                parseFloat(currentProduct.price.replace(/[^0-9.]/g, "")) *
+                                                parseFloat(product.price.toString().replace(/[^0-9.]/g, "")) *
                                                 (1 - parseFloat(appliedCoupon.discount) / 100)
                                             ).toFixed(2)}
                                         </span>
                                         <span className="text-lg sm:text-xl text-red-500 line-through font-medium">
-                                            {currentProduct.price}
+                                            {product.price}
                                         </span>
                                         <span className="text-sm sm:text-base font-semibold text-green-600">
                                             Save {appliedCoupon.discount}
@@ -228,10 +235,10 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                                     </>
                                 ) : (
                                     <>
-                                        <span className="text-2xl sm:text-3xl font-bold text-gray-900">{currentProduct.price}</span>
-                                        {currentProduct.oldPrice && (
+                                        <span className="text-2xl sm:text-3xl font-bold text-gray-900">{process.env.NEXT_PUBLIC_CURRENCY} {product.price}</span>
+                                        {product.oldPrice && (
                                             <span className="text-lg sm:text-xl text-red-500 line-through font-medium">
-                                                {currentProduct.oldPrice}
+                                                 {process.env.NEXT_PUBLIC_CURRENCY} {product.oldPrice}
                                             </span>
                                         )}
                                     </>
@@ -251,12 +258,12 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                                 {[...Array(5)].map((_, i) => (
                                     <Star
                                         key={i}
-                                        className={`w-4 h-4 sm:w-5 sm:h-5 ${i < Math.floor(currentProduct.rating) ? "fill-brand-yellow text-brand-yellow" : "text-gray-300"}`}
+                                        className={`w-4 h-4 sm:w-5 sm:h-5 ${i < Math.floor(product.rating) ? "fill-brand-yellow text-brand-yellow" : "text-gray-300"}`}
                                     />
                                 ))}
                             </div>
                             <span className="text-sm text-blue-600 underline hover:text-blue-700 cursor-pointer transition-colors">
-                                {currentProduct.reviewCount} product reviews
+                                {product.reviewCount} product reviews
                             </span>
                         </div>
 
@@ -274,8 +281,8 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                             <span>Delivery - Standard 3 To 5 Working Days</span>
                         </div>
 
-                         {/* Coupon Code Section - Only visible if product has couponId */}
-                        {currentProduct.couponId && (
+                        {/* Coupon Code Section - Only visible if product has couponId */}
+                        {product.isCouponDeal && (
                             <div className="space-y-3 border-t border-gray-300 pt-4 sm:pt-6">
                                 <label className="block text-sm font-medium text-gray-900">
                                     Enter Your Coupon Code Here
@@ -312,27 +319,33 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 
                         {/* Options and Quantity */}
                         <div className="space-y-8 md:space-y-4 pt-2 sm:pt-4">
-                            <label className="block text-sm font-medium text-gray-900 mb-2">
-                                Select Your Preferred Option
-                            </label>
+                            {product.options && product.options.length > 0 && product.options[0]?.values?.length > 0 && (
+
+                                <label className="block text-sm font-medium text-gray-900 mb-2">
+                                    Select Your Preferred Option
+                                </label>
+                            )}
                             <div className="flex mt-4 flex-row justify-between gap-4 ">
                                 {/* Select Option */}
                                 <div className="flex-1">
 
-                                    <div className="relative w-fit">
-                                        <select
-                                            value={selectedOption}
-                                            onChange={(e) => setSelectedOption(e.target.value)}
-                                            className="w-full cursor-pointer h-10 px-8 md:px-16 border border-black rounded font-semibold text-sm appearance-none bg-white pr-10"
-                                        >
-                                            {currentProduct.options.map((option) => (
-                                                <option key={option} value={option}>
-                                                    {option}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" />
-                                    </div>
+                                    {product.options && product.options.length > 0 && product.options[0]?.values?.length > 0 && (
+                                        <div className="relative w-fit">
+                                            <select
+                                                value={selectedOption}
+                                                onChange={(e) => setSelectedOption(e.target.value)}
+                                                className="w-full cursor-pointer h-10 px-8 md:px-16 border border-black rounded font-semibold text-sm appearance-none bg-white pr-10"
+                                            >
+                                                {product.options[0].values.map((option) => (
+                                                    <option key={option} value={option}>
+                                                        {option}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" />
+                                        </div>
+                                    )}
+
                                 </div>
 
                                 {/* Quantity Selector */}
@@ -423,7 +436,7 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                                     <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 sm:gap-4 items-start">
                                         <h3 className="font-semibold text-gray-900 text-sm">Description</h3>
                                         <p className="text-gray-700 text-sm leading-relaxed">
-                                            {currentProduct.description}
+                                            {product.description}
                                         </p>
                                     </div>
                                 </div>
@@ -443,7 +456,7 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                                                     ))}
                                                 </div>
                                                 <span className="text-lg sm:text-xl font-semibold">
-                                                    {currentProduct.reviewCount} Reviews
+                                                    {product.reviewCount} Reviews
                                                 </span>
                                             </div>
 
@@ -505,7 +518,7 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                                                 </div>
 
                                                 <div className="flex items-center gap-2 sm:gap-3 text-xs">
-                                                    <span className="capitalize truncate">{currentProduct.name}</span>
+                                                    <span className="capitalize truncate">{product.name}</span>
                                                     <div className="w-px h-4 sm:h-5 bg-brand-gray flex-shrink-0" />
                                                     <span className="flex-shrink-0">{review.productVariant}</span>
                                                 </div>
@@ -552,7 +565,7 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
                                                 </div>
 
                                                 <div className="flex items-center gap-2 sm:gap-3 text-xs">
-                                                    <span className="capitalize truncate">{currentProduct.name}</span>
+                                                    <span className="capitalize truncate">{product.name}</span>
                                                     <div className="w-px h-4 sm:h-5 bg-brand-gray flex-shrink-0" />
                                                     <span className="flex-shrink-0">{review.productVariant}</span>
                                                 </div>
@@ -589,4 +602,4 @@ const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 }
 
 // Export the current product to be used by RelatedProducts
-export const getCurrentProduct = () => products[0];
+// export const getproduct = () => products[0];

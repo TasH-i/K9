@@ -350,6 +350,7 @@ export default function Shop() {
                                             price={deal.price}
                                             oldPrice={deal.oldPrice}
                                             categoryName={deal.categoryName || "General"}
+                                            slug={deal.slug}
                                         />
                                     </div>
                                 ))}

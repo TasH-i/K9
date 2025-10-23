@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import ProductDetails from "@/components/Products/ProductDetails";
 import RelatedProducts from "@/components/Products/RelatedProducts";
 import BackButton from "@/components/ui/BackButton";
@@ -42,10 +42,11 @@ interface Product {
 export default function ProductViewPage({
   params,
 }: {
-  params: { categoryName: string; productName: string };
+  params: Promise<{ categoryName: string; productName: string }>;
 }) {
+
   const router = useRouter();
-  const { categoryName, productName } = params;
+const { categoryName, productName } = use<{ categoryName: string; productName: string }>(params);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -12,6 +12,7 @@ interface CouponDealProduct {
   price: string;
   oldPrice?: string;
   categoryName: string;
+  slug: string;
 }
 
 const CouponDeal = () => {
@@ -108,6 +109,7 @@ const CouponDeal = () => {
               price={deal.price}
               oldPrice={deal.oldPrice || ""}
               categoryName={deal.categoryName || "General"}
+              slug={deal.slug}
             />
           </div>
         ))}

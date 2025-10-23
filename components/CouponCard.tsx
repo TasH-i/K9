@@ -9,14 +9,14 @@ interface CouponCardProps {
     price: string;
     oldPrice: string;
     categoryName: string;
+    slug?: string;
 }
 
-export default function CouponCard({ name, image, price, oldPrice, categoryName }: CouponCardProps) {
+export default function CouponCard({ name, image, price, oldPrice, categoryName, slug }: CouponCardProps) {
     const router = useRouter();
-    const productSlug = name.replace(/\s+/g, "-");
 
     const handleView = () => {
-        router.push(`/shop/${categoryName}/${productSlug}`);
+        router.push(`/shop/${categoryName}/${slug}`);
     };
 
     return (

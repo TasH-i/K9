@@ -44,16 +44,31 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
 
-    
+
   try {
     const { slug } = await params;
 
+    // Decode & normalize the slug
+    const decodedSlug = decodeURIComponent(slug)
+      .toLowerCase()
+      .replace(/['"]/g, "") // remove apostrophes and quotes
+      .replace(/[^a-z0-9-]/g, "-") // replace special chars with dash
+      .replace(/--+/g, "-") // avoid multiple dashes
+      .trim();
+
     await dbConnect();
 
-    const product = await Product.findOne({ slug: slug.toLowerCase() })
+    const product = await Product.findOne({
+      $or: [
+        { slug: decodedSlug },
+        { slug: decodedSlug.replace(/['"]/g, "") },
+        { slug: decodedSlug.replace(/[^a-z0-9-]/g, "-") },
+      ],
+    })
       .populate("brand", "name image")
       .populate("category", "name")
       .lean() as unknown as ProductDocument;
+
 
     if (!product) {
       return NextResponse.json(

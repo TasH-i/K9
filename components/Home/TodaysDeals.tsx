@@ -17,6 +17,7 @@ interface TodayDealProduct {
   stock: number;
   rating: number;
   reviewCount: number;
+  categoryName?: string;
 }
 
 const TodaysDeals = () => {
@@ -92,6 +93,8 @@ const TodaysDeals = () => {
                 name={product1.name}
                 subtitle={product1.subtitle}
                 price={product1.price}
+                slug={product1.slug}
+                categoryName="Fashion"
               />
             )}
             {product2 && (
@@ -101,6 +104,8 @@ const TodaysDeals = () => {
                 name={product2.name}
                 subtitle={product2.subtitle}
                 price={product2.price}
+                slug={product2.slug}
+                categoryName="Fashion"
               />
             )}
           </div>
@@ -114,6 +119,8 @@ const TodaysDeals = () => {
                 name={product3.name}
                 subtitle={product3.subtitle}
                 price={product3.price}
+                slug={product3.slug}
+                categoryName="Fashion"
               />
             )}
             {product4 && (
@@ -123,6 +130,8 @@ const TodaysDeals = () => {
                 name={product4.name}
                 subtitle={product4.subtitle}
                 price={product4.price}
+                slug={product4.slug}
+                categoryName="Fashion"
               />
             )}
           </div>
@@ -137,6 +146,8 @@ const TodaysDeals = () => {
               name={product5.name}
               subtitle={product5.subtitle}
               price={product5.price}
+              slug={product5.slug}
+              categoryName="Fashion"
             />
           )}
         </div>
@@ -153,6 +164,8 @@ const TodaysDeals = () => {
               name={product6.name}
               subtitle={product6.subtitle}
               price={product6.price}
+              slug={product6.slug}
+              categoryName="Fashion"
             />
           )}
         </div>
@@ -167,6 +180,8 @@ const TodaysDeals = () => {
                 name={product7.name}
                 subtitle={product7.subtitle}
                 price={product7.price}
+                slug={product7.slug}
+                categoryName="Fashion"
               />
             )}
             {product8 && (
@@ -176,6 +191,8 @@ const TodaysDeals = () => {
                 name={product8.name}
                 subtitle={product8.subtitle}
                 price={product8.price}
+                slug={product8.slug}
+                categoryName="Fashion"
               />
             )}
           </div>
@@ -189,6 +206,8 @@ const TodaysDeals = () => {
                 name={product9.name}
                 subtitle={product9.subtitle}
                 price={product9.price}
+                slug={product9.slug}
+                categoryName="Fashion"
               />
             )}
             {product10 && (
@@ -198,6 +217,8 @@ const TodaysDeals = () => {
                 name={product10.name}
                 subtitle={product10.subtitle}
                 price={product10.price}
+                slug={product10.slug}
+                categoryName="Fashion"
               />
             )}
           </div>

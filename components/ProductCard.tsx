@@ -1,4 +1,6 @@
 import { ShoppingCart, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+
 
 interface ProductCardProps {
     logo?: string;
@@ -7,9 +9,17 @@ interface ProductCardProps {
     subtitle: string;
     price: string;
     type?: "horizontal" | "vertical";
+    slug?: string;
+    categoryName?: string;
 }
 
-export function ProductCardHorizontal({ logo, image, name, subtitle, price }: ProductCardProps) {
+export function ProductCardHorizontal({ logo, image, name, subtitle, price, slug, categoryName }: ProductCardProps) {
+    const router = useRouter();
+
+    const handleBuyNow = () => {
+        router.push(`/shop/${categoryName}/${slug}`);
+    };
+
     return (
         <div className="group w-full h-[270px] bg-white rounded shadow-md relative">
             {logo && (
@@ -23,8 +33,8 @@ export function ProductCardHorizontal({ logo, image, name, subtitle, price }: Pr
             </div>
 
             {/* BUY NOW Button (triggered by group hover) */}
-            <button
-                className="absolute cursor-pointer  left-6 bottom-6 flex items-center justify-center rounded-md cursor-pointer
+            <button onClick={handleBuyNow}
+                className="absolute cursor-pointer z-50 left-6 bottom-6 flex items-center justify-center rounded-md cursor-pointer
     bg-[#9A9A99]/40 text-white w-7 h-7 overflow-hidden transition-all duration-300 ease-in-out 
     group-hover:w-[110px] group-hover:bg-[var(--brand-pink)] hover:text-black"
             >
@@ -49,7 +59,13 @@ export function ProductCardHorizontal({ logo, image, name, subtitle, price }: Pr
     );
 }
 
-export function ProductCardVertical({ logo, image, name, subtitle, price }: ProductCardProps) {
+export function ProductCardVertical({ logo, image, name, subtitle, price, slug, categoryName  }: ProductCardProps) {
+      const router = useRouter();
+
+  const handleBuyNow = () => {
+    router.push(`/shop/${categoryName}/${slug}`);
+  };
+
     return (
         <div className="group w-full md:w-[244px] h-[550px] bg-white rounded shadow-md relative">
             {logo && (
@@ -68,7 +84,7 @@ export function ProductCardVertical({ logo, image, name, subtitle, price }: Prod
 
             <img src={image} alt={name} className="absolute left-[7px] top-[230px] w-[230px] h-[230px] object-contain" />
 
-            <button
+            <button onClick={handleBuyNow}
                 className="absolute left-6 bottom-6 flex cursor-pointer items-center justify-center rounded-md cursor-pointer
     bg-[#9A9A99]/40 text-white w-7 h-7 overflow-hidden transition-all duration-300 ease-in-out 
     group-hover:w-[110px] group-hover:bg-[var(--brand-pink)] hover:text-black"

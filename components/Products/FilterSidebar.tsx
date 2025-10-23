@@ -22,14 +22,15 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
   const [maxPrice, setMaxPrice] = useState<number>(highestProductPrice);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const sliderRef = useRef<SVGSVGElement>(null);
-  
+
   const [availabilityOptions, setAvailabilityOptions] = useState<FilterOption[]>([
     { label: "All products", checked: true },
-    { label: "Coming soon", checked: false },
+    { label: "Coupon Deals", checked: false },
+    { label: "Today's Deals", checked: false },
+    { label: "Featured", checked: false },
+    { label: "Coming Soon", checked: false },
     { label: "In Stock", checked: false },
-    { label: "Offers", checked: false },
     { label: "Out of stock", checked: false },
-    { label: "Pre-order", checked: false },
   ]);
 
   const [categoryOptions, setCategoryOptions] = useState<FilterOption[]>([
@@ -81,7 +82,7 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
     const rect = sliderRef.current.getBoundingClientRect();
     const sliderWidth = rect.width;
     const offsetX = clientX - rect.left;
-    
+
     // Calculate percentage (0 to 1)
     let percentage = offsetX / sliderWidth;
     percentage = Math.max(0, Math.min(1, percentage));
@@ -214,8 +215,8 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
         >
           <div
             className={`w-5 h-5 rounded-sm border-2 flex items-center justify-center transition-colors ${option.checked
-                ? "border-[#FF4D6D] bg-[#FF4D6D]"
-                : "border-black bg-white"
+              ? "border-[#FF4D6D] bg-[#FF4D6D]"
+              : "border-black bg-white"
               }`}
           >
             {option.checked && <Check className="w-3 h-3 text-white stroke-[3]" />}
@@ -287,7 +288,7 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
                 />
               </svg>
             </div>
-            
+
             {/* Price Range display */}
             <div className="flex justify-between items-center w-full">
               {/* lower price */}

@@ -47,8 +47,8 @@ const CategorySchema = new Schema<ICategory>(
   { timestamps: true }
 );
 
-CategorySchema.pre("save", function (next) {
-  if (this.isModified("name")) {
+CategorySchema.pre("validate", function (next) {
+  if (this.isModified("name") || !this.slug) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")

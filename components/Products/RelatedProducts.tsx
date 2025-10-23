@@ -3,102 +3,67 @@ import React, { useRef, useState, useEffect } from "react";
 import SectionHeader from "@/components/Home/SectionHeader";
 import CouponCard from "../CouponCard";
 import { GitCompare } from "lucide-react";
-import { getCurrentProduct } from "./ProductDetails";
 
-// All available products
-const allProducts = [
-  {
-    name: "Freelife - BT Audio Transmitter",
-    image: "/coupondeal/deal1.png",
-    price: "LKR 7,600.00",
-    oldPrice: "LKR 9,000.00",
-    categoryName: "Electronics",
-    brandName: "Freelife",
-    rating: 4.5,
-    reviewCount: 12,
-    stock: 20,
-    todayDeal: true,
-    couponDeal: true,
-    specifications: ["Color: Black", "Connectivity: Bluetooth 5.0"],
-    galleryImages: ["/coupondeal/deal1-1.png", "/coupondeal/deal1-2.png"],
-  },
-  {
-    name: "Cordway USB Type-C to 3.5mm",
-    image: "/coupondeal/deal2.png",
-    price: "LKR 2,100.00",
-    oldPrice: "LKR 3,200.00",
-    categoryName: "Baby Products",
-    brandName: "Freelife",
-    rating: 4.5,
-    reviewCount: 12,
-    stock: 20,
-    todayDeal: true,
-    couponDeal: true,
-  },
-  {
-    name: "Mirum Lifting RF Galvanic Facial Massager",
-    image: "/coupondeal/deal3.png",
-    price: "LKR 7,100.00",
-    oldPrice: "LKR 9,000.00",
-    categoryName: "Electronics",
-    todayDeal: true,
-    couponDeal: true,
-  },
-  {
-    name: "Mamconi Portable Milk Pot",
-    image: "/coupondeal/deal4.png",
-    price: "LKR 17,000.00",
-    oldPrice: "LKR 21,000.00",
-    categoryName: "Baby Products",
-    todayDeal: true,
-    couponDeal: true,
-  },
-  {
-    name: "Icebubble Braun Shaver Liquid",
-    image: "/coupondeal/deal5.png",
-    price: "LKR 5,100.00",
-    oldPrice: "LKR 6,000.00",
-    categoryName: "Electronics",
-    todayDeal: true,
-    couponDeal: true,
-  },
-  {
-    name: "Wireless Gaming Headset",
-    image: "/coupondeal/deal6.png",
-    price: "LKR 15,800.00",
-    oldPrice: "LKR 18,000.00",
-    categoryName: "Electronics",
-    todayDeal: true,
-    couponDeal: true,
-  },
-  {
-    name: "Smart Lamp",
-    image: "/coupondeal/deal7.png",
-    price: "LKR 3,200.00",
-    oldPrice: "LKR 4,000.00",
-    categoryName: "Home & Garden",
-    todayDeal: true,
-    couponDeal: true,
-  },
-];
+interface RelatedProduct {
+  _id: string;
+  name: string;
+  slug: string;
+  image: string;
+  price: string;
+  oldPrice: string;
+  categoryName: string;
+  brandName: string;
+  rating: number;
+  reviewCount: number;
+  stock: number;
+}
 
-const RelatedProducts = () => {
+interface RelatedProductsProps {
+  categoryId: string;
+  productId: string;
+  categoryName?: string;
+}
+
+const RelatedProducts = ({
+  categoryId,
+  productId,
+  categoryName = "products",
+}: RelatedProductsProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const [products, setProducts] = useState<RelatedProduct[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get current product and filter products by category
-  const currentProduct = getCurrentProduct();
-  const currentCategory = currentProduct.categoryName;
-  
-  // Filter products to only show those with the same category (excluding the current product)
-  const products = allProducts.filter(
-    (product) => 
-      product.categoryName === currentCategory && 
-      product.name !== currentProduct.name
-  );
+  // Fetch related products
+  useEffect(() => {
+    const fetchRelatedProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `/api/products/related?categoryId=${categoryId}&productId=${productId}&limit=10`
+        );
+        const data = await response.json();
 
-  //  Scroll handler
+        if (data.success && data.data.length > 0) {
+          setProducts(data.data);
+        } else {
+          setProducts([]);
+        }
+      } catch (error) {
+        console.error("Error fetching related products:", error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (categoryId && productId) {
+      fetchRelatedProducts();
+    }
+  }, [categoryId, productId]);
+
+  // Scroll handler
   const handleScroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
       const { scrollLeft, clientWidth } = scrollRef.current;
@@ -113,7 +78,7 @@ const RelatedProducts = () => {
     }
   };
 
-  //  Track scroll edges
+  // Track scroll edges
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -129,8 +94,8 @@ const RelatedProducts = () => {
     return () => el.removeEventListener("scroll", updateState);
   }, []);
 
-  // Don't render the section if there are no related products
-  if (products.length === 0) {
+  // Don't render the section if there are no related products or still loading
+  if (loading || products.length === 0) {
     return null;
   }
 
@@ -139,7 +104,7 @@ const RelatedProducts = () => {
       <SectionHeader
         icon={<GitCompare className="w-9 h-10 md:w-6 md:h-6 stroke-[#FF4D6D]" />}
         title="Related Products"
-        subtitle={`Good ${currentCategory} products to compare!`}
+        subtitle={`Good ${categoryName} products to compare!`}
         showNav={true}
         onPrev={() => handleScroll("left")}
         onNext={() => handleScroll("right")}
@@ -147,25 +112,25 @@ const RelatedProducts = () => {
         canScrollRight={!isAtEnd}
       />
 
-      {/*  Carousel Row */}
+      {/* Carousel Row */}
       <div
         ref={scrollRef}
         className="flex overflow-x-auto gap-6 scroll-smooth hide-scrollbar py-4 pb-6"
       >
-        {products.map((deal, index) => (
-          <div key={index} className="flex-shrink-0 w-[240px] ">
+        {products.map((product) => (
+          <div key={product._id} className="flex-shrink-0 w-[240px]">
             <CouponCard
-              name={deal.name}
-              image={deal.image}
-              price={deal.price}
-              oldPrice={deal.oldPrice}
-              categoryName={deal.categoryName || "General"}
+              name={product.name}
+              image={product.image}
+              price={product.price}
+              oldPrice={product.oldPrice}
+              categoryName={product.categoryName || "General"}
             />
           </div>
         ))}
       </div>
 
-      {/*  Fade overlay edges */}
+      {/* Fade overlay edges */}
       <div className="pointer-events-none absolute left-0 right-0 mx-auto max-w-[1240px]">
         {!isAtStart && (
           <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-white to-transparent" />

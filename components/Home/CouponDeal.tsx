@@ -3,122 +3,50 @@ import React, { useRef, useState, useEffect } from "react";
 import SectionHeader from "./SectionHeader";
 import CouponCard from "../CouponCard";
 import { Ticket } from "lucide-react";
+import { toast } from "sonner";
 
-const products = [
-    {
-        name: "Freelife - BT Audio Transmitter",
-        image: "/coupondeal/deal1.png",
-        price: "LKR 7,600.00",
-        oldPrice: "LKR 9,000.00",
-        categoryName: "Electronics",
-        brandName: "Freelife",
-        rating: 4.5,
-        reviewCount: 12,
-        stock: 20,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: ["Color: Black", "Connectivity: Bluetooth 5.0"],
-        galleryImages: ["/coupondeal/deal1-1.png", "/coupondeal/deal1-2.png"],
-        couponId: 1,
-    },
-    {
-        name: "Cordway USB Type-C to 3.5mm",
-        image: "/coupondeal/deal2.png",
-        price: "LKR 2,100.00",
-        oldPrice: "LKR 3,200.00",
-        categoryName: "Electronics",
-        brandName: "Cordway",
-        rating: 4.5,
-        reviewCount: 12,
-        stock: 20,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: ["Color: Black", "Type: USB-C to 3.5mm"],
-        galleryImages: ["/coupondeal/deal2.png"],
-    },
-    {
-        name: "Mirum Lifting RF Galvanic Facial Massager",
-        image: "/coupondeal/deal3.png",
-        price: "LKR 7,100.00",
-        oldPrice: "LKR 9,000.00",
-        categoryName: "Beauty",
-        brandName: "Mirum",
-        rating: 4.5,
-        reviewCount: 12,
-        stock: 20,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: ["Color: White", "Type: RF Galvanic"],
-        galleryImages: ["/coupondeal/deal3.png"],
-    },
-    {
-        name: "Mamconi Portable Milk Pot",
-        image: "/coupondeal/deal4.png",
-        price: "LKR 17,000.00",
-        oldPrice: "LKR 21,000.00",
-        categoryName: "Kitchen",
-        brandName: "Mamconi",
-        rating: 4.5,
-        reviewCount: 12,
-        stock: 20,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: ["Material: Stainless Steel", "Capacity: 1L"],
-        galleryImages: ["/coupondeal/deal4.png"],
-    },
-    {
-        name: "Icebubble Braun Shaver Liquid",
-        image: "/coupondeal/deal5.png",
-        price: "LKR 5,100.00",
-        oldPrice: "LKR 6,000.00",
-        categoryName: "Personal Care",
-        brandName: "Icebubble",
-        rating: 4.5,
-        reviewCount: 12,
-        stock: 20,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: ["Volume: 200ml", "Type: Cleaning Liquid"],
-        galleryImages: ["/coupondeal/deal5.png"],
-    },
-    {
-        name: "Wireless Gaming Headset",
-        image: "/coupondeal/deal6.png",
-        price: "LKR 15,800.00",
-        oldPrice: "LKR 18,000.00",
-        categoryName: "Electronics",
-        brandName: "Generic",
-        rating: 4.5,
-        reviewCount: 12,
-        stock: 20,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: ["Color: Black", "Connectivity: Wireless"],
-        galleryImages: ["/coupondeal/deal6.png"],
-    },
-    {
-        name: "Smart Lamp",
-        image: "/coupondeal/deal7.png",
-        price: "LKR 3,200.00",
-        oldPrice: "LKR 4,000.00",
-        categoryName: "Home",
-        brandName: "Generic",
-        rating: 4.5,
-        reviewCount: 12,
-        stock: 20,
-        todayDeal: true,
-        couponDeal: true,
-        specifications: ["Color: White", "Type: LED Smart Lamp"],
-        galleryImages: ["/coupondeal/deal7.png"],
-    },
-];
+interface CouponDealProduct {
+  _id: string;
+  name: string;
+  image: string;
+  price: string;
+  oldPrice?: string;
+  categoryName: string;
+}
 
 const CouponDeal = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const [products, setProducts] = useState<CouponDealProduct[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  //  Scroll handler
+  // Fetch coupon deals on mount
+  useEffect(() => {
+    fetchCouponDeals();
+  }, []);
+
+  const fetchCouponDeals = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/coupon-deals?limit=20");
+      const data = await response.json();
+
+      if (data.success && data.data.length > 0) {
+        setProducts(data.data);
+      } else {
+        // Fallback to empty array if no data
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error("Error fetching coupon deals:", error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Scroll handler
   const handleScroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
       const { scrollLeft, clientWidth } = scrollRef.current;
@@ -133,7 +61,7 @@ const CouponDeal = () => {
     }
   };
 
-  //  Track scroll edges
+  // Track scroll edges
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -149,6 +77,11 @@ const CouponDeal = () => {
     return () => el.removeEventListener("scroll", updateState);
   }, []);
 
+  // Don't render if loading or no products
+  if (loading || products.length === 0) {
+    return null;
+  }
+
   return (
     <section className="w-full max-w-screen mx-auto px-4 md:px-18 py-10">
       <SectionHeader
@@ -162,25 +95,25 @@ const CouponDeal = () => {
         canScrollRight={!isAtEnd}
       />
 
-      {/*  Carousel Row */}
+      {/* Carousel Row */}
       <div
         ref={scrollRef}
         className="flex overflow-x-auto gap-6 scroll-smooth hide-scrollbar py-4 pb-6"
       >
-        {products.map((deal, index) => (
-          <div key={index} className="flex-shrink-0 w-[240px]">
+        {products.map((deal) => (
+          <div key={deal._id} className="flex-shrink-0 w-[240px]">
             <CouponCard
               name={deal.name}
               image={deal.image}
               price={deal.price}
-              oldPrice={deal.oldPrice}
+              oldPrice={deal.oldPrice || ""}
               categoryName={deal.categoryName || "General"}
             />
           </div>
         ))}
       </div>
 
-      {/*  Fade overlay edges */}
+      {/* Fade overlay edges */}
       <div className="pointer-events-none absolute left-0 right-0 mx-auto max-w-[1240px]">
         {!isAtStart && (
           <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-white to-transparent" />

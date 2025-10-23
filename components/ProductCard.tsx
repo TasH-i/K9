@@ -18,7 +18,7 @@ export function ProductCardHorizontal({ logo, image, name, subtitle, price }: Pr
 
             <div className="absolute left-6 top-[82px] w-[262px]">
                 <h3 className="font-noto-kr text-xl font-medium">{name}</h3>
-                <p className="text-sm text-[#9299A5] mt-3.5">{subtitle}</p>
+                <p className="text-sm text-[#9299A5] mt-3.5 line-clamp-2">{subtitle}</p>
                 <p className="text-lg font-medium mt-3.5">{price}</p>
             </div>
 
@@ -62,7 +62,7 @@ export function ProductCardVertical({ logo, image, name, subtitle, price }: Prod
 
             <div className="absolute left-4 top-20 w-[212px]">
                 <h3 className="font-noto-kr text-xl font-medium leading-8">{name}</h3>
-                <p className="text-sm text-[#9299A5] mt-3.5">{subtitle}</p>
+                <p className="text-sm text-[#9299A5] mt-3.5 line-clamp-2">{subtitle}</p>
                 <p className="text-lg font-medium mt-3.5">{price}</p>
             </div>
 

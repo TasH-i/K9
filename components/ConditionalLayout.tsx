@@ -9,13 +9,15 @@ export default function ConditionalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+ const pathname = usePathname();
 
-  // Pages where we DON'T want to show header and footer
-  const authPages = ['/login', '/register'];
-  const isAuthPage = authPages.includes(pathname);
-
-  if (isAuthPage) {
+  // Check if current path starts with /admin or matches login/register
+  const hideLayout =
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname.startsWith('/admin');
+    
+  if (hideLayout) {
     // Return only children (no header/footer)
     return <>{children}</>;
   }

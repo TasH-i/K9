@@ -4,41 +4,52 @@ import CategoryCard from "../CategoryCard";
 import SectionHeader from "./SectionHeader";
 import { Book } from "lucide-react";
 
-const categories = [
-  {
-    title: "Electronics",
-    image: "/category/electro.png",
-  },
-  {
-    title: "Fashion",
-    image: "/category/fashion.png",
-  },
-  {
-    title: "Baby Products",
-    image: "/category/baby.png",
-  },
-  {
-    title: "Personal Care",
-    image: "/category/personal.png",
-  },
-  {
-    title: "Foods",
-    image: "/category/food.png",
-  },
-  {
-    title: "Furniture",
-    image: "/category/fur.png",
-  },
-  {
-    title: "Sports",
-    image: "/category/sport.png",
-  },
-];
+interface Category {
+  _id: string;
+  name: string;
+  image: string;
+  slug: string;
+  description?: string;
+}
 
 const CategorySection = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch categories from API
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/categories`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch categories: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setCategories(data.data);
+      } else if (Array.isArray(data)) {
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      // Set empty array as fallback so page doesn't break
+      setCategories([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Scroll handler
   const handleScroll = (direction: "left" | "right") => {
@@ -71,6 +82,11 @@ const CategorySection = () => {
     return () => el.removeEventListener("scroll", updateState);
   }, []);
 
+  // Don't render section if no categories
+  if (!isLoading && categories.length === 0) {
+    return null;
+  }
+
   return (
     <section className="w-full max-w-screen mx-auto px-4 md:px-18 py-6 md:py-10 relative">
       <SectionHeader
@@ -97,14 +113,28 @@ const CategorySection = () => {
           scrollPaddingLeft: '1rem'
         }}
       >
-        {categories.map((cat, index) => (
-          <div 
-            key={index} 
-            className="flex-shrink-0 w-[220px] md:w-fit snap-start"
-          >
-            <CategoryCard title={cat.title} image={cat.image}  />
+        {isLoading ? (
+          // Loading skeleton
+          <div className="flex gap-4 w-full">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 w-[220px] md:w-fit animate-pulse"
+              >
+                <div className="h-64 bg-gray-200 rounded-lg" />
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          categories.map((cat) => (
+            <div
+              key={cat._id}
+              className="flex-shrink-0 w-[220px] md:w-fit snap-start"
+            >
+              <CategoryCard title={cat.name} image={cat.image} />
+            </div>
+          ))
+        )}
       </div>
 
       {/* Optional: fade overlay for edges */}

@@ -1,13 +1,68 @@
 "use client"
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import SectionHeader from './SectionHeader'
-import { Flame, BookOpen, Ticket } from "lucide-react";
+import { Flame } from "lucide-react";
 import { ProductCardHorizontal, ProductCardVertical } from '../ProductCard';
 import { useRouter } from "next/navigation";
 
+interface TodayDealProduct {
+  _id: string;
+  name: string;
+  slug: string;
+  logo?: string;
+  image: string;
+  subtitle: string;
+  price: string;
+  stock: number;
+  rating: number;
+  reviewCount: number;
+}
+
 const TodaysDeals = () => {
-    const router = useRouter();
+  const router = useRouter();
+  const [products, setProducts] = useState<TodayDealProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTodaysDeals();
+  }, []);
+
+  const fetchTodaysDeals = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/today-deals");
+      const data = await response.json();
+
+      if (data.success && data.data.length > 0) {
+        setProducts(data.data);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error("Error fetching today's deals:", error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Show nothing while loading or if no products
+  if (loading || products.length === 0) {
+    return null;
+  }
+
+  // Get products for each position
+  const product1 = products[0];
+  const product2 = products[1];
+  const product3 = products[2];
+  const product4 = products[3];
+  const product5 = products[4];
+  const product6 = products[5];
+  const product7 = products[6];
+  const product8 = products[7];
+  const product9 = products[8];
+  const product10 = products[9];
 
   return (
     <section className="w-full max-w-screen mx-auto px-4 lg:px-16 mb-8 bg-gray-50 pb-8">
@@ -21,7 +76,7 @@ const TodaysDeals = () => {
         <button onClick={() => router.push("/shop")} className="hidden md:block text-sm bg-brand-pink px-4 py-1 rounded-sm text-white hover:text-black cursor-pointer hover:scale-105 easy-in-out duration-500">SHOW ALL PRODUCTS</button>
       </div>
       <div className=" block md:hidden mb-10 items-end justify-end w-full flex">
-          <button onClick={() => router.push("/shop")} className=" text-sm bg-brand-pink px-4 py-1 rounded-sm text-white hover:text-black cursor-pointer hover:scale-105 easy-in-out duration-500 ">SHOW ALL PRODUCTS</button>
+        <button onClick={() => router.push("/shop")} className=" text-sm bg-brand-pink px-4 py-1 rounded-sm text-white hover:text-black cursor-pointer hover:scale-105 easy-in-out duration-500 ">SHOW ALL PRODUCTS</button>
       </div>
 
       {/* Grid type 1 --> for first 4 cards */}
@@ -30,50 +85,60 @@ const TodaysDeals = () => {
         <div className="flex-1 flex flex-col gap-2.5">
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <ProductCardHorizontal
-              logo="/products/logo1.png"
-              image="/products/p1.png"
-              name="Namyang Dairy's Fresh Milk"
-              subtitle="900ml"
-              price="LKR 680.00"
-            />
-            <ProductCardHorizontal
-              logo="/products/logo2.png"
-              image="/products/p2.png"
-              name="Roborock Vacuum Cleaner"
-              subtitle="S9 MaxV Ultra"
-              price="LKR 353,675.00"
-            />
+            {product1 && (
+              <ProductCardHorizontal
+                logo={product1.logo}
+                image={product1.image}
+                name={product1.name}
+                subtitle={product1.subtitle}
+                price={product1.price}
+              />
+            )}
+            {product2 && (
+              <ProductCardHorizontal
+                logo={product2.logo}
+                image={product2.image}
+                name={product2.name}
+                subtitle={product2.subtitle}
+                price={product2.price}
+              />
+            )}
           </div>
 
           {/* Row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <ProductCardHorizontal
-              logo="/products/logo4.png"
-              image="/products/p4.png"
-              name="Age 20's Signature Essence Cover"
-              subtitle="Case + Refill 14g 2p Set"
-              price="LKR 3480.00"
-            />
-            <ProductCardHorizontal
-              logo="/products/logo5.png"
-              image="/products/p5.png"
-              name="TCL 4K QLED TV"
-              subtitle="Google TV"
-              price="LKR 118,348.00"
-            />
+            {product3 && (
+              <ProductCardHorizontal
+                logo={product3.logo}
+                image={product3.image}
+                name={product3.name}
+                subtitle={product3.subtitle}
+                price={product3.price}
+              />
+            )}
+            {product4 && (
+              <ProductCardHorizontal
+                logo={product4.logo}
+                image={product4.image}
+                name={product4.name}
+                subtitle={product4.subtitle}
+                price={product4.price}
+              />
+            )}
           </div>
         </div>
 
         {/* Right Column - Vertical Cards */}
         <div className="flex flex-col md:flex-row lg:flex-col gap-2.5">
-          <ProductCardVertical
-            logo="/products/logo6.png"
-            image="/products/p6.png"
-            name="Cetaphil Baby Lotion"
-            subtitle="400ml"
-            price="LKR 3800.00"
-          />
+          {product5 && (
+            <ProductCardVertical
+              logo={product5.logo}
+              image={product5.image}
+              name={product5.name}
+              subtitle={product5.subtitle}
+              price={product5.price}
+            />
+          )}
         </div>
       </div>
 
@@ -81,50 +146,60 @@ const TodaysDeals = () => {
       <div className="flex flex-col lg:flex-row gap-2.5 px-12 ">
         {/* Left Column - Vertical Cards */}
         <div className="flex flex-col md:flex-row lg:flex-col gap-2.5">
-          <ProductCardVertical
-            logo="/products/logo6.png"
-            image="/products/p6.png"
-            name="Cetaphil Baby Lotion"
-            subtitle="400ml"
-            price="LKR 3800.00"
-          />
+          {product6 && (
+            <ProductCardVertical
+              logo={product6.logo}
+              image={product6.image}
+              name={product6.name}
+              subtitle={product6.subtitle}
+              price={product6.price}
+            />
+          )}
         </div>
         {/* Right Column */}
         <div className="flex-1 flex flex-col gap-2.5">
           {/* Row 3 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <ProductCardHorizontal
-              logo="/products/logo7.png"
-              image="/products/p7.png"
-              name="Axxen ​​U3 ULTRA SD Card"
-              subtitle="64GB"
-              price="LKR 1,617.00"
-            />
-            <ProductCardHorizontal
-              logo="/products/logo8.png"
-              image="/products/p8.png"
-              name="Roborock Vacuum Cleaner"
-              subtitle="S9 MaxV Ultra"
-              price="LKR 353,675.00"
-            />
+            {product7 && (
+              <ProductCardHorizontal
+                logo={product7.logo}
+                image={product7.image}
+                name={product7.name}
+                subtitle={product7.subtitle}
+                price={product7.price}
+              />
+            )}
+            {product8 && (
+              <ProductCardHorizontal
+                logo={product8.logo}
+                image={product8.image}
+                name={product8.name}
+                subtitle={product8.subtitle}
+                price={product8.price}
+              />
+            )}
           </div>
 
           {/* Row 4 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <ProductCardHorizontal
-              logo="/products/logo9.png"
-              image="/products/p9.png"
-              name="TCL 4K QD Mini LED TV"
-              subtitle="Smart TV"
-              price="LKR 96,400.00"
-            />
-            <ProductCardHorizontal
-              logo="/products/logo10.png"
-              image="/products/p10.png"
-              name="Age 20's Latest Essence Cover Pact"
-              subtitle="Case + Refill 14g 2p Set"
-              price="LKR 3480.00"
-            />
+            {product9 && (
+              <ProductCardHorizontal
+                logo={product9.logo}
+                image={product9.image}
+                name={product9.name}
+                subtitle={product9.subtitle}
+                price={product9.price}
+              />
+            )}
+            {product10 && (
+              <ProductCardHorizontal
+                logo={product10.logo}
+                image={product10.image}
+                name={product10.name}
+                subtitle={product10.subtitle}
+                price={product10.price}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -61,7 +61,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       }
 
       const data = await response.json();
-      onImageUpload(data.data.url, data.data.filename);
+      onImageUpload(data.fileUrl, data.filename);
     } catch (err) {
       setError("Failed to upload image");
       console.error(err);

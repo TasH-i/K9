@@ -4,14 +4,16 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
+import DeleteConfirmModal from "@/components/Deleteconfirmmodal";
+import { toast } from "sonner";
 
 interface Coupon {
   _id: string;
   code: string;
   discountType: string;
   discountValue: number;
+  discountPercentageValue: number;
   usageCount: number;
-  maxUsageCount?: number;
   isActive: boolean;
   startDate: string;
   endDate: string;
@@ -25,6 +27,14 @@ const CouponsPage = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
+
+  // Delete modal state
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    couponId: "",
+    couponCode: "",
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchCoupons();
@@ -46,27 +56,56 @@ const CouponsPage = () => {
         setCoupons(data.data);
         setTotalPages(data.pagination.pages);
         setTotal(data.pagination.total);
+      } else {
+        toast.error("Failed to fetch coupons");
       }
     } catch (error) {
       console.error("Error fetching coupons:", error);
+      toast.error("Error loading coupons. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this coupon?")) {
-      try {
-        const response = await fetch(`/api/admin/coupons/${id}`, {
-          method: "DELETE",
-        });
+  const openDeleteModal = (id: string, code: string) => {
+    setDeleteModal({
+      isOpen: true,
+      couponId: id,
+      couponCode: code,
+    });
+  };
 
-        if (response.ok) {
-          setCoupons(coupons.filter((c) => c._id !== id));
-        }
-      } catch (error) {
-        console.error("Error deleting coupon:", error);
+  const closeDeleteModal = () => {
+    setDeleteModal({
+      isOpen: false,
+      couponId: "",
+      couponCode: "",
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setIsDeleting(true);
+      const toastId = toast.loading(`Deleting "${deleteModal.couponCode}"...`);
+
+      const response = await fetch(`/api/admin/coupons/${deleteModal.couponId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setCoupons(coupons.filter((c) => c._id !== deleteModal.couponId));
+        toast.dismiss(toastId);
+        toast.success(`"${deleteModal.couponCode}" deleted successfully`);
+        closeDeleteModal();
+      } else {
+        toast.dismiss(toastId);
+        toast.error("Failed to delete coupon");
       }
+    } catch (error) {
+      console.error("Error deleting coupon:", error);
+      toast.error("Error deleting coupon. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -84,28 +123,40 @@ const CouponsPage = () => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-pink-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink"
             />
           </div>
         </div>
         <Link
           href="/admin/coupons/new"
-          className="ml-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="ml-4 bg-brand-pink text-white px-4 py-2 rounded-lg hover:scale-105 transform transition-transform flex items-center gap-2"
         >
           <Plus size={20} /> Create Coupon
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md border border-pink-100 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-pink-50 border-b border-brand-pink">
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Code</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Discount</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Usage</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Valid Period</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-pink-700">
+                Code
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-pink-700">
+                Discount
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-pink-700">
+                Usage
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-pink-700">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-pink-700">
+                Valid Period
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-pink-700">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -113,7 +164,7 @@ const CouponsPage = () => {
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center">
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-pink"></div>
                   </div>
                 </td>
               </tr>
@@ -125,13 +176,23 @@ const CouponsPage = () => {
               </tr>
             ) : (
               coupons.map((coupon) => (
-                <tr key={coupon._id} className="border-b hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-bold text-gray-900">{coupon.code}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {coupon.discountValue}{coupon.discountType === "percentage" ? "%" : "$"}
+                <tr key={coupon._id} className="border-b border-brand-pink hover:bg-pink-50">
+                  <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                    {coupon.code}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {coupon.usageCount} {coupon.maxUsageCount ? `/ ${coupon.maxUsageCount}` : ""}
+                    {coupon.discountType === "percentage" ? (
+                      <span className="text-brand-pink font-medium">
+                        {coupon.discountPercentageValue}%
+                      </span>
+                    ) : (
+                      <span className="text-brand-pink font-medium">
+                        ${coupon.discountValue.toFixed(2)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {coupon.usageCount} times
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <span
@@ -148,18 +209,18 @@ const CouponsPage = () => {
                     {new Date(coupon.startDate).toLocaleDateString()} -{" "}
                     {new Date(coupon.endDate).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-sm space-x-2">
+                  <td className="px-6 py-4 text-sm space-x-6">
                     <button
                       onClick={() => router.push(`/admin/coupons/${coupon._id}`)}
                       className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
                     >
-                      <Edit size={16} /> Edit
+                      <Edit size={18} />
                     </button>
                     <button
-                      onClick={() => handleDelete(coupon._id)}
+                      onClick={() => openDeleteModal(coupon._id, coupon.code)}
                       className="text-red-600 hover:text-red-800 inline-flex items-center gap-1"
                     >
-                      <Trash2 size={16} /> Delete
+                      <Trash2 size={18} />
                     </button>
                   </td>
                 </tr>
@@ -194,6 +255,17 @@ const CouponsPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        title="Delete Coupon"
+        message="Are you sure you want to delete this coupon?"
+        itemName={deleteModal.couponCode}
+        isDeleting={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={closeDeleteModal}
+      />
     </div>
   );
 };

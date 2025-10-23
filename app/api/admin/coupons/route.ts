@@ -3,6 +3,14 @@ import dbConnect from "@/lib/db";
 import Coupon from "@/models/coupon";
 import { verifyAdminAuth } from "@/app/api/admin/auth/route";
 
+// Helper function to compute isActive status
+function computeIsActive(startDate: Date | string, endDate: Date | string): boolean {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  return now >= start && now <= end;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const authCheck = await verifyAdminAuth();
@@ -28,14 +36,25 @@ export async function GET(request: NextRequest) {
     const coupons = await Coupon.find(query)
       .populate("applicableCategories", "name")
       .populate("applicableBrands", "name")
+      .populate("applicableProducts", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .exec();
+
+    // Add computed isActive status to each coupon
+    const couponsWithStatus = coupons.map((coupon: any) => {
+      const couponObj = coupon.toObject ? coupon.toObject() : coupon;
+      return {
+        ...couponObj,
+        isActive: computeIsActive(couponObj.startDate, couponObj.endDate),
+      };
+    });
 
     return NextResponse.json(
       {
         success: true,
-        data: coupons,
+        data: couponsWithStatus,
         pagination: {
           total,
           page,
@@ -69,18 +88,50 @@ export async function POST(request: NextRequest) {
       description,
       discountType,
       discountValue,
-      maxDiscount,
-      minPurchaseAmount,
-      maxUsageCount,
+      discountPercentageValue,
       applicableCategories,
       applicableBrands,
+      applicableProducts,
       startDate,
       endDate,
     } = body;
 
-    if (!code || !discountType || !discountValue || !startDate || !endDate) {
+    // Validation
+    if (!code || !discountType || !startDate || !endDate) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      discountType === "fixed" &&
+      (discountValue === undefined || discountValue === null || discountValue <= 0)
+    ) {
+      return NextResponse.json(
+        { error: "Discount value is required for fixed discount type" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      discountType === "percentage" &&
+      (discountPercentageValue === undefined ||
+        discountPercentageValue === null ||
+        discountPercentageValue <= 0)
+    ) {
+      return NextResponse.json(
+        { error: "Discount percentage is required for percentage discount type" },
+        { status: 400 }
+      );
+    }
+
+    // Validate end date is after start date
+    const startDateTime = new Date(startDate);
+    const endDateTime = new Date(endDate);
+    if (endDateTime <= startDateTime) {
+      return NextResponse.json(
+        { error: "End date must be after start date" },
         { status: 400 }
       );
     }
@@ -100,12 +151,12 @@ export async function POST(request: NextRequest) {
       code: code.toUpperCase(),
       description: description || "",
       discountType,
-      discountValue,
-      maxDiscount: maxDiscount || null,
-      minPurchaseAmount: minPurchaseAmount || 0,
-      maxUsageCount: maxUsageCount || null,
+      discountValue: discountType === "fixed" ? discountValue : 0,
+      discountPercentageValue:
+        discountType === "percentage" ? discountPercentageValue : 0,
       applicableCategories: applicableCategories || [],
       applicableBrands: applicableBrands || [],
+      applicableProducts: applicableProducts || [],
       startDate,
       endDate,
     });
@@ -114,13 +165,18 @@ export async function POST(request: NextRequest) {
     await coupon.populate([
       { path: "applicableCategories", select: "name" },
       { path: "applicableBrands", select: "name" },
+      { path: "applicableProducts", select: "name" },
     ]);
+
+    // Add computed isActive status
+    const couponObject = coupon.toObject();
+    couponObject.isActive = computeIsActive(coupon.startDate, coupon.endDate);
 
     return NextResponse.json(
       {
         success: true,
         message: "Coupon created successfully",
-        data: coupon,
+        data: couponObject,
       },
       { status: 201 }
     );

@@ -88,6 +88,7 @@ const TodaysDeals = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {product1 && (
               <ProductCardHorizontal
+               _id={product1._id}
                 logo={product1.logo}
                 image={product1.image}
                 name={product1.name}
@@ -99,6 +100,7 @@ const TodaysDeals = () => {
             )}
             {product2 && (
               <ProductCardHorizontal
+               _id={product2._id}
                 logo={product2.logo}
                 image={product2.image}
                 name={product2.name}
@@ -114,6 +116,7 @@ const TodaysDeals = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {product3 && (
               <ProductCardHorizontal
+               _id={product3._id}
                 logo={product3.logo}
                 image={product3.image}
                 name={product3.name}
@@ -125,6 +128,7 @@ const TodaysDeals = () => {
             )}
             {product4 && (
               <ProductCardHorizontal
+               _id={product4._id}
                 logo={product4.logo}
                 image={product4.image}
                 name={product4.name}
@@ -141,6 +145,7 @@ const TodaysDeals = () => {
         <div className="flex flex-col md:flex-row lg:flex-col gap-2.5">
           {product5 && (
             <ProductCardVertical
+              _id={product5._id}
               logo={product5.logo}
               image={product5.image}
               name={product5.name}
@@ -159,6 +164,7 @@ const TodaysDeals = () => {
         <div className="flex flex-col md:flex-row lg:flex-col gap-2.5">
           {product6 && (
             <ProductCardVertical
+              _id={product6._id}
               logo={product6.logo}
               image={product6.image}
               name={product6.name}
@@ -175,6 +181,7 @@ const TodaysDeals = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {product7 && (
               <ProductCardHorizontal
+               _id={product7._id}
                 logo={product7.logo}
                 image={product7.image}
                 name={product7.name}
@@ -186,6 +193,7 @@ const TodaysDeals = () => {
             )}
             {product8 && (
               <ProductCardHorizontal
+               _id={product8._id}
                 logo={product8.logo}
                 image={product8.image}
                 name={product8.name}
@@ -201,6 +209,7 @@ const TodaysDeals = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {product9 && (
               <ProductCardHorizontal
+               _id={product9._id}
                 logo={product9.logo}
                 image={product9.image}
                 name={product9.name}
@@ -212,6 +221,7 @@ const TodaysDeals = () => {
             )}
             {product10 && (
               <ProductCardHorizontal
+               _id={product10._id}
                 logo={product10.logo}
                 image={product10.image}
                 name={product10.name}

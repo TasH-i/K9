@@ -120,6 +120,7 @@ const RelatedProducts = ({
         {products.map((product) => (
           <div key={product._id} className="flex-shrink-0 w-[240px]">
             <CouponCard
+              _id={product._id}
               name={product.name}
               image={product.image}
               price={product.price}

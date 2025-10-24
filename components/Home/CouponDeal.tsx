@@ -104,6 +104,7 @@ const CouponDeal = () => {
         {products.map((deal) => (
           <div key={deal._id} className="flex-shrink-0 w-[240px]">
             <CouponCard
+             _id={deal._id}
               name={deal.name}
               image={deal.image}
               price={deal.price}

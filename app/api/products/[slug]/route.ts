@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Product from "@/models/product";
+import Coupon from "@/models/coupon";
 
 
 
@@ -76,7 +77,45 @@ export async function GET(
         { status: 404 }
       );
     }
+    // Determine applicable coupons for this product
+    const now = new Date();
+    const activeCoupons = await Coupon.find({
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    })
+      .select(
+        "code description discountType discountValue discountPercentageValue applicableProducts applicableCategories applicableBrands"
+      )
+      .lean();
 
+    const productIdStr = (product as any)._id?.toString?.() || "";
+    const categoryIdStr = (product as any).category?._id?.toString?.() || "";
+    const brandIdStr = (product as any).brand?._id?.toString?.() || "";
+
+    const applicableCoupons = activeCoupons
+      .filter((c: any) => {
+        const productMatch = Array.isArray(c.applicableProducts)
+          ? c.applicableProducts.some((pid: any) => pid?.toString?.() === productIdStr)
+          : false;
+        const categoryMatch = Array.isArray(c.applicableCategories)
+          ? c.applicableCategories.some((cid: any) => cid?.toString?.() === categoryIdStr)
+          : false;
+        const brandMatch = Array.isArray(c.applicableBrands)
+          ? c.applicableBrands.some((bid: any) => bid?.toString?.() === brandIdStr)
+          : false;
+        return productMatch || categoryMatch || brandMatch;
+      })
+      .map((c: any) => ({
+        code: c.code,
+        description: c.description || "",
+        discountType: c.discountType,
+        discountValue:
+          c.discountType === "percentage"
+            ? c.discountPercentageValue ?? c.discountValue ?? 0
+            : c.discountValue ?? 0,
+      }));
+
+    const hasCoupon = applicableCoupons.length > 0;
     // Format product data
     const formattedProduct = {
       _id: product._id,
@@ -107,7 +146,8 @@ export async function GET(
       isFeatured: product.isFeatured,
       isTodayDeal: product.isTodayDeal,
       isComingSoon: product.isComingSoon,
-      isCouponDeal: product.isCouponDeal,
+      isCouponDeal: product.isCouponDeal || hasCoupon,
+      applicableCoupons,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     };
@@ -127,3 +167,4 @@ export async function GET(
     );
   }
 }
+

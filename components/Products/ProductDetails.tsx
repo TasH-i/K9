@@ -86,49 +86,46 @@ interface ReviewData {
 }
 
 type Coupon = {
-    id: number;
     code: string;
-    discount: string;
     description: string;
+    discountType: "percentage" | "fixed";
+    discountValue: number;
+    discountPercentageValue: number;
 };
 
-const coupons = [
-    { id: 1, code: "SAVE20", discount: "20%", description: "Get 20% off on electronics" },
-    { id: 2, code: "WELCOME15", discount: "15%", description: "Welcome offer - 15% discount" },
-];
 
-const reviews = [
-    {
-        id: 1,
-        userName: "John Tyler",
-        userAvatar:
-            "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
-        rating: 5,
-        date: "June 19, 2025",
-        productVariant: "128GB",
-        reviewText:
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    },
-    {
-        id: 2,
-        userName: "John Tyler",
-        userAvatar:
-            "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
-        rating: 5,
-        date: "August 19, 2025",
-        productVariant: "64GB",
-        reviewText:
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    },
-];
+// const reviews = [
+//     {
+//         id: 1,
+//         userName: "John Tyler",
+//         userAvatar:
+//             "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
+//         rating: 5,
+//         date: "June 19, 2025",
+//         productVariant: "128GB",
+//         reviewText:
+//             "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+//     },
+//     {
+//         id: 2,
+//         userName: "John Tyler",
+//         userAvatar:
+//             "https://api.builder.io/api/v1/image/assets/TEMP/adc02b7f9a41bd15cfece7a649589c4bd40dd651?width=86",
+//         rating: 5,
+//         date: "August 19, 2025",
+//         productVariant: "64GB",
+//         reviewText:
+//             "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+//     },
+// ];
 
-const ratingBreakdown = [
-    { stars: 5, percentage: 60, width: "60%" },
-    { stars: 4, percentage: 20, width: "20%" },
-    { stars: 3, percentage: 10, width: "10%" },
-    { stars: 2, percentage: 5, width: "5%" },
-    { stars: 1, percentage: 5, width: "5%" },
-];
+// const ratingBreakdown = [
+//     { stars: 5, percentage: 60, width: "60%" },
+//     { stars: 4, percentage: 20, width: "20%" },
+//     { stars: 3, percentage: 10, width: "10%" },
+//     { stars: 2, percentage: 5, width: "5%" },
+//     { stars: 1, percentage: 5, width: "5%" },
+// ];
 
 interface ProductDetailsProps {
     product: Product;
@@ -149,8 +146,10 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     const [reviewData, setReviewData] = useState<ReviewData | null>(null);
     const [reviewLoading, setReviewLoading] = useState(true);
     const [reviewError, setReviewError] = useState("");
+    const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
     const productImages = product.images && product.images.length > 0 ? product.images : [product.thumbnail];
+    
     const handleAddToCart = async () => {
         try {
             await addToCart(product, quantity, selectedOption);
@@ -188,7 +187,8 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         fetchReviews();
     }, [product._id]);
 
-    const handleApplyCoupon = () => {
+   // Handle Apply Coupon - Validate with Backend
+    const handleApplyCoupon = async () => {
         setCouponError("");
         setAppliedCoupon(null);
 
@@ -197,13 +197,60 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
             return;
         }
 
-        const coupon = coupons.find((c) => c.code.toUpperCase() === couponCode.toUpperCase());
+        setIsValidatingCoupon(true);
 
-        if (coupon) {
-            setAppliedCoupon(coupon);
+        try {
+            // Call backend to validate coupon
+            const response = await fetch("/api/coupons/validate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    couponCode: couponCode.toUpperCase(),
+                    productId: product._id,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                setCouponError(data.error || "Invalid coupon code");
+                return;
+            }
+
+            // Coupon is valid and applicable
+            setAppliedCoupon(data.data);
             setCouponCode("");
+            toast.success("Coupon applied successfully!", { duration: 2000 });
+        } catch (error) {
+            console.error("Error validating coupon:", error);
+            setCouponError("Failed to validate coupon");
+        } finally {
+            setIsValidatingCoupon(false);
+        }
+    };
+
+     // Calculate discounted price
+    const calculateDiscountedPrice = (): number => {
+        if (!appliedCoupon) return product.price;
+
+        if (appliedCoupon.discountType === "percentage") {
+            return product.price * (1 - appliedCoupon.discountPercentageValue / 100);
         } else {
-            setCouponError("Invalid coupon code");
+            // Fixed discount
+            return Math.max(0, product.price - appliedCoupon.discountValue);
+        }
+    };
+
+    // Get discount display text
+    const getDiscountDisplay = (): string => {
+        if (!appliedCoupon) return "";
+
+        if (appliedCoupon.discountType === "percentage") {
+            return `${appliedCoupon.discountPercentageValue}%`;
+        } else {
+            return `LKR ${appliedCoupon.discountValue}`;
         }
     };
 
@@ -320,21 +367,18 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                         </div>
 
                         {/* Price Section */}
-                        <div className="space-y-2 border-b border-gray-300 pb-3 sm:pb-4">
+                         <div className="space-y-2 border-b border-gray-300 pb-3 sm:pb-4">
                             <div className="flex items-baseline gap-3">
                                 {appliedCoupon ? (
                                     <>
                                         <span className="text-2xl sm:text-3xl font-bold text-gray-900">
-                                            LKR {(
-                                                parseFloat(product.price.toString().replace(/[^0-9.]/g, "")) *
-                                                (1 - parseFloat(appliedCoupon.discount) / 100)
-                                            ).toFixed(2)}
+                                            {process.env.NEXT_PUBLIC_CURRENCY} {calculateDiscountedPrice().toFixed(2)}
                                         </span>
                                         <span className="text-lg sm:text-xl text-red-500 line-through font-medium">
-                                            {product.price}
+                                            {process.env.NEXT_PUBLIC_CURRENCY} {product.price}
                                         </span>
                                         <span className="text-sm sm:text-base font-semibold text-green-600">
-                                            Save {appliedCoupon.discount}
+                                            Save {getDiscountDisplay()}
                                         </span>
                                     </>
                                 ) : (
@@ -351,7 +395,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                             {appliedCoupon && (
                                 <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded">
                                     <Check className="w-4 h-4" />
-                                    <span className="font-medium">Coupon {appliedCoupon.code} applied - You save {appliedCoupon.discount}!</span>
+                                    <span className="font-medium">Coupon {appliedCoupon.code} applied - You save {getDiscountDisplay()}!</span>
                                 </div>
                             )}
                         </div>
@@ -385,7 +429,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                             <span>Delivery - Standard 3 To 5 Working Days</span>
                         </div>
 
-                        {/* Coupon Code Section - Only visible if product has couponId */}
+                        {/* Coupon Code Section - Only visible if product isCoupunDeal true */}
                         {product.isCouponDeal && (
                             <div className="space-y-3 border-t border-gray-300 pt-4 sm:pt-6">
                                 <label className="block text-sm font-medium text-gray-900">
@@ -399,14 +443,16 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                                             setCouponCode(e.target.value.toUpperCase());
                                             setCouponError("");
                                         }}
+                                        disabled={isValidatingCoupon}
                                         placeholder="ABCD1234"
-                                        className="flex-1 px-4 py-2.5 border border-gray-300 rounded font-medium text-sm placeholder-gray-400 focus:outline-none focus:border-brand-pink focus:ring-1 focus:ring-brand-pink"
+                                        className="flex-1 px-4 py-2.5 border border-gray-300 rounded font-medium text-sm placeholder-gray-400 focus:outline-none focus:border-brand-pink focus:ring-1 focus:ring-brand-pink disabled:opacity-50"
                                     />
                                     <button
                                         onClick={handleApplyCoupon}
-                                        className="px-4 py-2.5 bg-brand-pink text-white rounded font-medium text-sm hover:scale-105 transition-transform cursor-pointer"
+                                        disabled={isValidatingCoupon}
+                                        className="px-4 py-2.5 bg-brand-pink text-white rounded font-medium text-sm hover:scale-105 transition-transform cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        Apply
+                                        {isValidatingCoupon ? "Checking..." : "Apply"}
                                     </button>
                                 </div>
                                 {couponError && <p className="text-xs text-red-500">{couponError}</p>}

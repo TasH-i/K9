@@ -30,10 +30,40 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const search = searchParams.get("search") || "";
+    const filterProduct = searchParams.get("product") || "";
+    const filterUser = searchParams.get("user") || "";
+    const filterRating = searchParams.get("rating") || "";
     const skip = (page - 1) * limit;
 
+    // Build search query
+    let query: any = {};
+    if (search) {
+      query.$or = [
+        { productName: { $regex: search, $options: "i" } },
+        { userName: { $regex: search, $options: "i" } },
+        { userEmail: { $regex: search, $options: "i" } },
+        { title: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Add product filter
+    if (filterProduct) {
+      query.productName = { $regex: filterProduct, $options: "i" };
+    }
+
+    // Add user filter
+    if (filterUser) {
+      query.userName = { $regex: filterUser, $options: "i" };
+    }
+
+    // Add rating filter
+    if (filterRating) {
+      query.rating = parseInt(filterRating);
+    }
+
     // Get all reviews (including unapproved)
-    const reviews = await Review.find({})
+    const reviews = await Review.find(query)
       .populate("user", "name email profilePicture")
       .populate("product", "name thumbnail")
       .sort({ createdAt: -1 })
@@ -41,7 +71,7 @@ export async function GET(request: NextRequest) {
       .skip(skip)
       .lean();
 
-    const totalReviews = await Review.countDocuments({});
+    const totalReviews = await Review.countDocuments(query);
 
     // Format response to show product and user details
     const formattedReviews = reviews.map((review) => ({
@@ -56,7 +86,7 @@ export async function GET(request: NextRequest) {
       createdAt: review.createdAt,
       isApproved: review.isApproved,
       productThumbnail: review.product?.thumbnail || review.productThumbnail,
-      userAvatar: review.user?.profilePicture || review.userAvatar ,
+      userAvatar: review.user?.profilePicture || review.userAvatar,
     }));
 
     return NextResponse.json(

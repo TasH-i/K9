@@ -225,7 +225,7 @@ const ProductsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mb-20">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="relative">

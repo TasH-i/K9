@@ -3,8 +3,8 @@
 
 import { useState, Dispatch, SetStateAction } from "react";
 import { Star, X, AlertCircle, Heart } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -21,7 +21,6 @@ export default function ReviewModal({
   productName,
   onReviewAdded,
 }: ReviewModalProps) {
-  const { data: session, status } = useSession();
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [title, setTitle] = useState("");
@@ -30,9 +29,20 @@ export default function ReviewModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Check authentication on client side only
+  useState(() => {
+    if (typeof window !== "undefined") {
+      const userData = localStorage.getItem("user");
+      setIsAuthenticated(!!userData);
+      setMounted(true);
+    }
+  });
 
   // If not authenticated, show login message
-  if (status === "unauthenticated") {
+  if (mounted && !isAuthenticated) {
     return (
       <>
         {isOpen && (
@@ -66,12 +76,14 @@ export default function ReviewModal({
               </div>
 
               {/* Action button */}
+              <Link  href="/login">
               <button
-                onClick={onClose}
+                
                 className="w-full px-4 py-3 bg-gradient-to-r from-brand-pink to-pink-600 text-white rounded-lg font-semibold hover:from-pink-700 hover:to-pink-700 transition-all shadow-md hover:shadow-lg"
               >
-                Close
+                Login
               </button>
+              </Link>
             </div>
           </div>
         )}
@@ -91,6 +103,16 @@ export default function ReviewModal({
         return;
       }
 
+      // Get user data from localStorage
+      const userDataString = localStorage.getItem("user");
+      if (!userDataString) {
+        toast.error("User data not found. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      const userData = JSON.parse(userDataString);
+
       const response = await fetch("/api/reviews", {
         method: "POST",
         headers: {
@@ -102,6 +124,10 @@ export default function ReviewModal({
           title,
           reviewText: reviewText.trim(),
           productVariant: productVariant || undefined,
+          userEmail: userData.email,
+          userId: userData.id || userData._id,
+          userName: userData.name,
+          userAvatar: userData.profilePicture || userData.image,
         }),
       });
 
@@ -132,7 +158,7 @@ export default function ReviewModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -292,7 +318,7 @@ export default function ReviewModal({
             </button>
             <button
               type="submit"
-              disabled={loading || reviewText.trim().length < 2 || !session}
+              disabled={loading || reviewText.trim().length < 2}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-brand-pink to-pink-600 text-white font-semibold rounded-lg hover:from-pink-700 hover:to-pink-700 transition-all disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95"
             >
               {loading ? (

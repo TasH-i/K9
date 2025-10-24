@@ -1,11 +1,9 @@
-// app/api/reviews/route.ts
+// app/api/reviews/route.ts - UPDATED VERSION (Using localStorage user data)
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Review, { IReview } from "@/models/review";
 import Product from "@/models/product";
 import User from "@/models/user";
-import { getServerSession } from "next-auth";
-import authOptions from "@/lib/authOptions";
 
 // GET reviews for a product
 export async function GET(request: NextRequest) {
@@ -84,22 +82,29 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new review
+// POST - Create a new review (UPDATED: Uses user data from request body)
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const body = await request.json();
+    const { 
+      productId, 
+      rating, 
+      title, 
+      reviewText, 
+      productVariant,
+      userEmail,
+      userId,
+      userName,
+      userAvatar
+    } = body;
+
+    // ✅ Validate user data from client
+    if (!userEmail) {
       return NextResponse.json(
         { success: false, error: "You must be logged in to add a review" },
         { status: 401 }
       );
     }
-
-    await dbConnect();
-
-    const body = await request.json();
-    const { productId, rating, title, reviewText, productVariant } = body;
 
     // Validate required fields
     if (!productId || !rating || !reviewText) {
@@ -125,6 +130,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await dbConnect();
+
     // Check if product exists
     const product = await Product.findById(productId);
     if (!product) {
@@ -134,11 +141,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user details
-    const user = await User.findOne({ email: session.user.email });
+    // ✅ Updated: Find user by email (case-insensitive)
+    const userEmailLower = userEmail.toLowerCase().trim();
+    let user = await User.findOne({ 
+      email: { $regex: `^${userEmailLower}$`, $options: "i" }
+    });
+
     if (!user) {
+      console.error(`User not found for email: ${userEmailLower}`);
       return NextResponse.json(
-        { success: false, error: "User not found" },
+        { success: false, error: "User profile not found. Please log out and log in again." },
         { status: 404 }
       );
     }
@@ -163,12 +175,12 @@ export async function POST(request: NextRequest) {
       rating,
       title: title || "",
       reviewText: reviewText.trim(),
-      userEmail: session.user.email,
-      userName: session.user.name || "Anonymous",
-      userAvatar: session.user.image || user.profilePicture || null,
+      userEmail: userEmail,
+      userName: userName || user.name || "Anonymous",
+      userAvatar: userAvatar || user.profilePicture || null,
       productName: product.name,
       productVariant: productVariant || null,
-      isApproved: true, // Auto-approve for now
+      isApproved: true, // Auto-approve for all logged users
     });
 
     const savedReview = (await newReview.save()) as IReview;
@@ -210,18 +222,23 @@ export async function POST(request: NextRequest) {
 // PUT - Update a review (user can only update their own)
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const body = await request.json();
+    const { 
+      reviewId, 
+      rating, 
+      title, 
+      reviewText, 
+      productVariant,
+      userEmail 
+    } = body;
+
+    // ✅ Validate user data from client
+    if (!userEmail) {
       return NextResponse.json(
         { success: false, error: "You must be logged in" },
         { status: 401 }
       );
     }
-
-    await dbConnect();
-
-    const body = await request.json();
-    const { reviewId, rating, title, reviewText, productVariant } = body;
 
     if (!reviewId) {
       return NextResponse.json(
@@ -229,6 +246,8 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    await dbConnect();
 
     const review = await Review.findById(reviewId);
     if (!review) {
@@ -239,8 +258,12 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if user owns this review
-    const user = await User.findOne({ email: session.user.email });
-    if (review.user.toString() !== user?._id.toString()) {
+    const userEmailLower = userEmail.toLowerCase().trim();
+    const user = await User.findOne({ 
+      email: { $regex: `^${userEmailLower}$`, $options: "i" }
+    });
+
+    if (!user || review.user.toString() !== user._id.toString()) {
       return NextResponse.json(
         { success: false, error: "You can only edit your own reviews" },
         { status: 403 }
@@ -275,18 +298,16 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete a review (user can delete their own, admin can delete any)
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const body = await request.json();
+    const { reviewId, userEmail } = body;
+
+    // ✅ Validate user data from client
+    if (!userEmail) {
       return NextResponse.json(
         { success: false, error: "You must be logged in" },
         { status: 401 }
       );
     }
-
-    await dbConnect();
-
-    const { searchParams } = new URL(request.url);
-    const reviewId = searchParams.get("id");
 
     if (!reviewId) {
       return NextResponse.json(
@@ -294,6 +315,8 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    await dbConnect();
 
     const review = await Review.findById(reviewId);
     if (!review) {
@@ -303,11 +326,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const user = await User.findOne({ email: session.user.email });
+    const userEmailLower = userEmail.toLowerCase().trim();
+    const user = await User.findOne({ 
+      email: { $regex: `^${userEmailLower}$`, $options: "i" }
+    });
+
     const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
     // Check if user owns this review or is admin
-    if (review.user.toString() !== user?._id.toString() && !isAdmin) {
+    if (!user || (review.user.toString() !== user._id.toString() && !isAdmin)) {
       return NextResponse.json(
         { success: false, error: "You can only delete your own reviews" },
         { status: 403 }

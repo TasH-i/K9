@@ -674,35 +674,21 @@ const ProductForm = () => {
 
               {/* Add Image Button - Completely separate from images grid */}
               {form.images.length < 5 && (
-                <div className="relative w-full aspect-square">
-                  <label className="block w-full h-full rounded-lg border-2 border-dashed border-pink-300 bg-pink-50 hover:bg-pink-100 transition-colors cursor-pointer flex items-center justify-center">
-                    <div className="text-center pointer-events-none">
-                      <Plus size={28} className="mx-auto text-pink-400 mb-1" />
-                      <p className="text-xs text-gray-600 font-medium">Add image</p>
+                <div className="relative w-full aspect-square py-8">
+                  <div className="w-full h-full rounded-lg  transition-colors flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                      {/* <div className="text-center">
+                        <Plus size={28} className="mx-auto text-pink-400 mb-1" />
+                        <p className="text-xs text-gray-600 font-medium">Add image</p>
+                      </div> */}
                     </div>
-
-                    {/* Hidden file input */}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          // Trigger upload through ImageUploader
-                          // This will be handled by the ImageUploader component
-                        }
-                      }}
-                    />
-                  </label>
-
-                  {/* ImageUploader overlay - but truly hidden */}
-                  <div className="absolute inset-0 rounded-lg opacity-0 hover:opacity-100 pointer-events-auto">
-                    <ImageUploader
-                      onImageUpload={handleImagesUpload}
-                      currentImage=""
-                      folder="products"
-                    />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageUploader
+                        onImageUpload={handleImagesUpload}
+                        currentImage=""
+                        folder="products"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

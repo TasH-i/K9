@@ -125,6 +125,7 @@ const RelatedProducts = ({
               price={product.price}
               oldPrice={product.oldPrice}
               categoryName={product.categoryName || "General"}
+              slug={product.slug}
             />
           </div>
         ))}

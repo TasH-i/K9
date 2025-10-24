@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, Share2, ChevronDown, Book, Star, ChevronUp, Check } from "lucide-react";
+import ReviewModal from "./ReviewModal";
+import { useSession } from "next-auth/react";
+
 
 interface ProductAttribute {
     name: string;
@@ -49,6 +52,36 @@ interface Product {
     isCouponDeal: boolean;
     createdAt: string;
     updatedAt: string;
+}
+
+interface Review {
+    _id: string;
+    rating: number;
+    title?: string;
+    reviewText: string;
+    userName: string;
+    userAvatar?: string;
+    userEmail?: string;
+    productVariant?: string;
+    createdAt: string;
+    user?: {
+        name: string;
+        email: string;
+        profilePicture?: string;
+    };
+}
+
+interface RatingBreakdown {
+    stars: number;
+    percentage: number;
+    count: number;
+}
+
+interface ReviewData {
+    reviews: Review[];
+    totalReviews: number;
+    averageRating: number;
+    ratingBreakdown: RatingBreakdown[];
 }
 
 type Coupon = {
@@ -101,6 +134,7 @@ interface ProductDetailsProps {
 }
 
 export default function ProductDetails({ product }: ProductDetailsProps) {
+    const { data: session } = useSession();
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
     const [selectedOption, setSelectedOption] = useState(product.options?.[0]?.values?.[0] || "");
@@ -109,8 +143,36 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     const [couponError, setCouponError] = useState("");
     const [activeTab, setActiveTab] = useState("description");
     const [showAllReviews, setShowAllReviews] = useState(false);
+    const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [reviewData, setReviewData] = useState<ReviewData | null>(null);
+    const [reviewLoading, setReviewLoading] = useState(true);
+    const [reviewError, setReviewError] = useState("");
 
     const productImages = product.images && product.images.length > 0 ? product.images : [product.thumbnail];
+
+    // Fetch reviews
+    useEffect(() => {
+        const fetchReviews = async () => {
+            try {
+                setReviewLoading(true);
+                const response = await fetch(`/api/reviews?productId=${product._id}&limit=100`);
+                const data = await response.json();
+
+                if (data.success) {
+                    setReviewData(data.data);
+                } else {
+                    setReviewError(data.error || "Failed to load reviews");
+                }
+            } catch (error) {
+                console.error("Error fetching reviews:", error);
+                setReviewError("Failed to load reviews");
+            } finally {
+                setReviewLoading(false);
+            }
+        };
+
+        fetchReviews();
+    }, [product._id]);
 
     const handleApplyCoupon = () => {
         setCouponError("");
@@ -144,6 +206,34 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                 { label: "Brand", value: product.brand.name, label2: "Category", value2: product.category.name },
                 { label: "SKU", value: product.sku, label2: "Stock", value2: product.stock.toString() },
             ];
+
+    const handleReviewAdded = () => {
+        // Refetch reviews
+        const fetchReviews = async () => {
+            try {
+                const response = await fetch(`/api/reviews?productId=${product._id}&limit=100`);
+                const data = await response.json();
+
+                if (data.success) {
+                    setReviewData(data.data);
+                    setShowAllReviews(false); // Scroll to reviews
+                }
+            } catch (error) {
+                console.error("Error refetching reviews:", error);
+            }
+        };
+
+        fetchReviews();
+    };
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -238,7 +328,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                                         <span className="text-2xl sm:text-3xl font-bold text-gray-900">{process.env.NEXT_PUBLIC_CURRENCY} {product.price}</span>
                                         {product.oldPrice && (
                                             <span className="text-lg sm:text-xl text-red-500 line-through font-medium">
-                                                 {process.env.NEXT_PUBLIC_CURRENCY} {product.oldPrice}
+                                                {process.env.NEXT_PUBLIC_CURRENCY} {product.oldPrice}
                                             </span>
                                         )}
                                     </>
@@ -444,160 +534,230 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                         )}
 
                         {activeTab === "reviews" && (
-                            <div className="bg-white">
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-                                    {/* Left: Ratings Summary */}
-                                    <div className="space-y-4 sm:space-y-6">
-                                        <div className="space-y-6 sm:space-y-8">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <Star key={i} className="w-5 h-5 sm:w-6 sm:h-6 fill-brand-yellow text-brand-yellow" />
+                            <div className="space-y-8">
+                                {reviewLoading ? (
+                                    <div className="text-center py-8">
+                                        <p className="text-gray-600">Loading reviews...</p>
+                                    </div>
+                                ) : reviewError ? (
+                                    <div className="text-center py-8">
+                                        <p className="text-red-500">{reviewError}</p>
+                                    </div>
+                                ) : !reviewData || reviewData.reviews.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <p className="text-gray-600 mb-4">No reviews yet</p>
+                                        <button
+                                            onClick={() => {
+                                                if (session) {
+                                                    setReviewModalOpen(true);
+                                                } else {
+                                                    alert("Please log in to write a review");
+                                                }
+                                            }}
+                                            className="px-6 py-2 bg-brand-pink text-white rounded font-medium hover:bg-pink-700 transition-colors"
+                                        >
+                                            Be the first to review
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Rating Summary */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                            {/* Left: Rating Overview */}
+                                            <div className="lg:col-span-1 space-y-6">
+                                                <div>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-4xl font-bold">{reviewData.averageRating}</span>
+                                                        <span className="text-gray-600">out of 5</span>
+                                                    </div>
+                                                    <div className="flex mt-2">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <Star
+                                                                key={i}
+                                                                className="w-5 h-5 sm:w-6 sm:h-6 fill-brand-yellow text-brand-yellow"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <p className="text-lg font-semibold mt-2">
+                                                        {reviewData.totalReviews} Reviews
+                                                    </p>
+                                                </div>
+
+                                                <div className="h-px bg-gray-200" />
+
+                                                {/* Rating Breakdown */}
+                                                <div className="space-y-3">
+                                                    {reviewData.ratingBreakdown.map((item) => (
+                                                        <div key={item.stars} className="flex items-center gap-2 sm:gap-3">
+                                                            <div className="flex items-center gap-1 sm:gap-2 min-w-[2rem]">
+                                                                <Star className="w-3 h-3 sm:w-4 sm:h-4 text-brand-yellow" />
+                                                                <span className="text-xs">{item.stars}</span>
+                                                            </div>
+                                                            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full bg-orange-400 rounded-full"
+                                                                    style={{ width: `${item.percentage}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-xs min-w-[3rem] text-right">
+                                                                {item.percentage}%
+                                                            </span>
+                                                        </div>
                                                     ))}
                                                 </div>
-                                                <span className="text-lg sm:text-xl font-semibold">
-                                                    {product.reviewCount} Reviews
-                                                </span>
+
+                                                <button
+                                                    onClick={() => setReviewModalOpen(true)}
+                                                    className="w-full h-10 mt-4 border border-brand-pink text-brand-pink rounded font-medium hover:bg-pink-50 transition-colors uppercase text-xs sm:text-sm"
+                                                >
+                                                    Write a review
+                                                </button>
                                             </div>
 
-                                            <div className="h-px bg-gray-200" />
+                                            {/* Right: Reviews List */}
+                                            <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+                                                {reviewData.reviews.slice(0, 2).map((review) => (
+                                                    <div key={review._id} className="space-y-3 sm:space-y-4">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="flex gap-3 sm:gap-4">
+                                                                <img
+                                                                    src={
+                                                                        review.userAvatar ||
+                                                                        review.user?.profilePicture ||
+                                                                        "/placeholder.png"
+                                                                    }
+                                                                    alt={review.userName || review.user?.name || "User"}
+                                                                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover flex-shrink-0"
+                                                                />
 
-                                            <div className="space-y-3 sm:space-y-4">
-                                                {ratingBreakdown.map((item) => (
-                                                    <div key={item.stars} className="flex items-center gap-2 sm:gap-3">
-                                                        <div className="flex items-center gap-1 sm:gap-2 min-w-[2rem]">
-                                                            <Star className="w-3 h-3 sm:w-4 sm:h-4 text-brand-yellow" />
-                                                            <span className="text-xs">{item.stars}</span>
+                                                                <div>
+                                                                    <h4 className="font-semibold text-xs">{review.userName}</h4>
+                                                                    <div className="flex mt-1">
+                                                                        {[...Array(5)].map((_, i) => (
+                                                                            <Star
+                                                                                key={i}
+                                                                                className={`w-3 h-3 sm:w-4 sm:h-4 ${i < review.rating
+                                                                                    ? "fill-brand-yellow text-brand-yellow"
+                                                                                    : "text-gray-300"
+                                                                                    }`}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-xs text-gray-600 flex-shrink-0">
+                                                                {formatDate(review.createdAt)}
+                                                            </span>
                                                         </div>
-                                                        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full bg-orange-400 rounded-full"
-                                                                style={{ width: item.width }}
-                                                            />
-                                                        </div>
-                                                        <span className="text-xs min-w-[3rem] text-right">
-                                                            {item.percentage}%
-                                                        </span>
+
+                                                        {review.title && (
+                                                            <h5 className="font-semibold text-sm">{review.title}</h5>
+                                                        )}
+
+                                                        {review.productVariant && (
+                                                            <div className="flex items-center gap-2 sm:gap-3 text-xs">
+                                                                <span className="capitalize truncate">{product.name}</span>
+                                                                <div className="w-px h-4 sm:h-5 bg-brand-gray flex-shrink-0" />
+                                                                <span className="flex-shrink-0">{review.productVariant}</span>
+                                                            </div>
+                                                        )}
+
+                                                        <p className="text-xs text-brand-dark-gray leading-5 sm:leading-6">
+                                                            {review.reviewText}
+                                                        </p>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
-                                        <button className="w-full h-10 mt-4 border border-brand-pink text-brand-pink rounded font-medium hover:bg-pink-50 transition-colors uppercase text-xs sm:text-sm">
-                                            Write a review
-                                        </button>
-                                    </div>
+                                        {/* Expanded Reviews */}
+                                        {showAllReviews && reviewData.reviews.length > 2 && (
+                                            <div className="mt-8 sm:mt-10 space-y-8 sm:space-y-12 border-t pt-8">
+                                                {reviewData.reviews.slice(2).map((review) => (
+                                                    <div key={review._id} className="space-y-3 sm:space-y-4">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="flex gap-3 sm:gap-4">
+                                                                <img
+                                                                    src={
+                                                                        review.userAvatar ||
+                                                                        review.user?.profilePicture ||
+                                                                        "/placeholder.png"
+                                                                    }
+                                                                    alt={review.userName || review.user?.name || "User"}
+                                                                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover flex-shrink-0"
+                                                                />
 
-                                    {/* Right: Reviews */}
-                                    <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-                                        {reviews.slice(0, 2).map((review) => (
-                                            <div key={review.id} className="space-y-3 sm:space-y-4">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="flex gap-3 sm:gap-4">
-                                                        <img
-                                                            src={review.userAvatar}
-                                                            alt={review.userName}
-                                                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover flex-shrink-0"
-                                                        />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xs">{review.userName}</h4>
-                                                            <div className="flex mt-1">
-                                                                {[...Array(5)].map((_, i) => (
-                                                                    <Star
-                                                                        key={i}
-                                                                        className={`w-3 h-3 sm:w-4 sm:h-4 ${i < review.rating
-                                                                            ? "fill-brand-yellow text-brand-yellow"
-                                                                            : "text-gray-300"
-                                                                            }`}
-                                                                    />
-                                                                ))}
+                                                                <div>
+                                                                    <h4 className="font-semibold text-xs">{review.userName}</h4>
+                                                                    <div className="flex mt-1">
+                                                                        {[...Array(5)].map((_, i) => (
+                                                                            <Star
+                                                                                key={i}
+                                                                                className={`w-3 h-3 sm:w-4 sm:h-4 ${i < review.rating
+                                                                                    ? "fill-brand-yellow text-brand-yellow"
+                                                                                    : "text-gray-300"
+                                                                                    }`}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
                                                             </div>
+                                                            <span className="text-xs text-gray-600 flex-shrink-0">
+                                                                {formatDate(review.createdAt)}
+                                                            </span>
                                                         </div>
-                                                    </div>
-                                                    <span className="text-xs text-gray-600 flex-shrink-0">{review.date}</span>
-                                                </div>
 
-                                                <div className="flex items-center gap-2 sm:gap-3 text-xs">
-                                                    <span className="capitalize truncate">{product.name}</span>
-                                                    <div className="w-px h-4 sm:h-5 bg-brand-gray flex-shrink-0" />
-                                                    <span className="flex-shrink-0">{review.productVariant}</span>
-                                                </div>
+                                                        {review.title && (
+                                                            <h5 className="font-semibold text-sm">{review.title}</h5>
+                                                        )}
 
-                                                <p className="text-xs text-brand-dark-gray leading-5 sm:leading-6 capitalize">
-                                                    {review.reviewText}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Expanded reviews */}
-                                {showAllReviews && (
-                                    <div className="mt-8 sm:mt-10 space-y-8 sm:space-y-12">
-                                        {reviews.slice(2).map((review) => (
-                                            <div
-                                                key={review.id}
-                                                className="max-w-screen mx-auto space-y-3 sm:space-y-4 pt-4 sm:pt-6"
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="flex gap-3 sm:gap-4">
-                                                        <img
-                                                            src={review.userAvatar}
-                                                            alt={review.userName}
-                                                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover flex-shrink-0"
-                                                        />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xs">{review.userName}</h4>
-                                                            <div className="flex mt-1">
-                                                                {[...Array(5)].map((_, i) => (
-                                                                    <Star
-                                                                        key={i}
-                                                                        className={`w-3 h-3 sm:w-4 sm:h-4 ${i < review.rating
-                                                                            ? "fill-brand-yellow text-brand-yellow"
-                                                                            : "text-gray-300"
-                                                                            }`}
-                                                                    />
-                                                                ))}
+                                                        {review.productVariant && (
+                                                            <div className="flex items-center gap-2 sm:gap-3 text-xs">
+                                                                <span className="capitalize truncate">{product.name}</span>
+                                                                <div className="w-px h-4 sm:h-5 bg-brand-gray flex-shrink-0" />
+                                                                <span className="flex-shrink-0">{review.productVariant}</span>
                                                             </div>
-                                                        </div>
+                                                        )}
+
+                                                        <p className="text-xs text-brand-dark-gray leading-5 sm:leading-6">
+                                                            {review.reviewText}
+                                                        </p>
                                                     </div>
-                                                    <span className="text-xs text-gray-600 flex-shrink-0">{review.date}</span>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 sm:gap-3 text-xs">
-                                                    <span className="capitalize truncate">{product.name}</span>
-                                                    <div className="w-px h-4 sm:h-5 bg-brand-gray flex-shrink-0" />
-                                                    <span className="flex-shrink-0">{review.productVariant}</span>
-                                                </div>
-
-                                                <p className="text-xs text-brand-dark-gray leading-5 sm:leading-6 capitalize">
-                                                    {review.reviewText}
-                                                </p>
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* View More / View Less Button */}
-                                {reviews.length > 2 && (
-                                    <button
-                                        onClick={() => setShowAllReviews(!showAllReviews)}
-                                        className="flex items-center gap-2 sm:gap-3 ml-auto text-xs font-semibold py-4 sm:py-6 cursor-pointer"
-                                    >
-                                        {showAllReviews ? "View Less" : "View More"}
-                                        {showAllReviews ? (
-                                            <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6" />
-                                        ) : (
-                                            <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" />
                                         )}
-                                    </button>
+
+                                        {/* View More / View Less Button */}
+                                        {reviewData.reviews.length > 2 && (
+                                            <button
+                                                onClick={() => setShowAllReviews(!showAllReviews)}
+                                                className="flex items-center gap-2 sm:gap-3 ml-auto text-xs font-semibold py-4 sm:py-6 cursor-pointer"
+                                            >
+                                                {showAllReviews ? "View Less" : "View More"}
+                                                {showAllReviews ? (
+                                                    <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6" />
+                                                ) : (
+                                                    <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" />
+                                                )}
+                                            </button>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}
                     </div>
                 </div>
             </div>
+            {/* Review Modal */}
+            <ReviewModal
+                isOpen={reviewModalOpen}
+                onClose={() => setReviewModalOpen(false)}
+                productId={product._id}
+                productName={product.name}
+                onReviewAdded={handleReviewAdded}
+            />
         </div>
+
     );
 }
 

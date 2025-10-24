@@ -1,11 +1,25 @@
+"use client";
+
 import { ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface CategoryCardProps {
   title: string;
   image: string;
+  categoryId?: string;
 }
 
-export default function CategoryCard({ title, image }: CategoryCardProps) {
+export default function CategoryCard({ title, image, categoryId }: CategoryCardProps) {
+  const router = useRouter();
+
+  const handleBuyNow = () => {
+    if (categoryId) {
+      router.push(`/shop?category=${categoryId}`);
+    } else {
+      router.push("/shop");
+    }
+  };
+
   return (
     <div className="group w-[220px] md:w-[240px] h-[250px] bg-white rounded shadow-md relative ">
       <div className="absolute left-4 top-4">
@@ -13,6 +27,7 @@ export default function CategoryCard({ title, image }: CategoryCardProps) {
       </div>
 
       <button
+        onClick={handleBuyNow}
         className="absolute left-4 md:left-6 bottom-4 md:bottom-6 flex items-center justify-center rounded-md cursor-pointer
           bg-[#9A9A99]/40 text-white w-8 h-8 md:w-7 md:h-7 overflow-hidden transition-all duration-300 ease-in-out 
           active:scale-95 active:bg-[var(--brand-pink)] md:active:scale-100

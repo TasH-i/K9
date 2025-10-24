@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 interface FilterOption {
   label: string;
   checked: boolean;
+  id?: string;
 }
 
 interface FilterSidebarProps {
@@ -15,13 +16,22 @@ interface FilterSidebarProps {
     maxPrice: number;
   }) => void;
   highestProductPrice?: number;
+  initialCategory?: string; // NEW: pre-select category from URL
 }
 
-export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }: FilterSidebarProps) {
+export function FilterSidebar({ 
+  onFilterChange, 
+  highestProductPrice = 1500000,
+  initialCategory // NEW: receive category from URL param
+}: FilterSidebarProps) {
   //  Independent state for each section
   const [maxPrice, setMaxPrice] = useState<number>(highestProductPrice);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const sliderRef = useRef<SVGSVGElement>(null);
+
+  // Loading states for dynamic data
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
+  const [brandsLoading, setBrandsLoading] = useState<boolean>(true);
 
   const [availabilityOptions, setAvailabilityOptions] = useState<FilterOption[]>([
     { label: "All products", checked: true },
@@ -33,22 +43,82 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
     { label: "Out of stock", checked: false },
   ]);
 
-  const [categoryOptions, setCategoryOptions] = useState<FilterOption[]>([
-    { label: "Baby products", checked: false },
-    { label: "Electronics", checked: false },
-    { label: "Fashion", checked: false },
-    { label: "Foods", checked: false },
-    { label: "Personal care", checked: false },
-  ]);
+  // Dynamic categories and brands
+  const [categoryOptions, setCategoryOptions] = useState<FilterOption[]>([]);
+  const [brandOptions, setBrandOptions] = useState<FilterOption[]>([]);
 
-  const [brandOptions, setBrandOptions] = useState<FilterOption[]>([
-    { label: "age 20's", checked: false },
-    { label: "Axxen", checked: false },
-    { label: "Cetaphil", checked: false },
-    { label: "Phillips", checked: false },
-    { label: "TCL", checked: false },
-    { label: "Roborock", checked: false },
-  ]);
+  // Fetch categories from backend
+  const fetchCategories = useCallback(async () => {
+    try {
+      setCategoriesLoading(true);
+      const response = await fetch("/api/admin/categories");
+      const data = await response.json();
+
+      if (data.success && data.data && Array.isArray(data.data)) {
+        const categories = data.data.map((cat: any) => ({
+          label: cat.name,
+          id: cat._id || cat.id,
+          checked: false,
+        }));
+        setCategoryOptions(categories);
+      } else {
+        setCategoryOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setCategoryOptions([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
+  // Fetch brands from backend
+  const fetchBrands = useCallback(async () => {
+    try {
+      setBrandsLoading(true);
+      const response = await fetch("/api/admin/brands");
+      const data = await response.json();
+
+      if (data.success && data.data && Array.isArray(data.data)) {
+        const brands = data.data.map((brand: any) => ({
+          label: brand.name,
+          id: brand._id || brand.id,
+          checked: false,
+        }));
+        setBrandOptions(brands);
+      } else {
+        setBrandOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+      setBrandOptions([]);
+    } finally {
+      setBrandsLoading(false);
+    }
+  }, []);
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchCategories();
+    fetchBrands();
+  }, [fetchCategories, fetchBrands]);
+
+  // NEW: Pre-select category from URL parameter
+  useEffect(() => {
+    if (initialCategory && categoryOptions.length > 0) {
+      setCategoryOptions(prev =>
+        prev.map(cat => ({
+          ...cat,
+          checked: cat.id === initialCategory ? true : false,
+        }))
+      );
+      
+      // Uncheck "All products" when specific category is selected
+      setAvailabilityOptions(prev =>
+        prev.map((opt, i) => (i === 0 ? { ...opt, checked: false } : opt))
+      );
+    }
+  }, [initialCategory, categoryOptions.length]);
 
   // Update maxPrice when highestProductPrice changes
   useEffect(() => {
@@ -64,11 +134,11 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
 
       const categories = categoryOptions
         .filter(opt => opt.checked)
-        .map(opt => opt.label.toLowerCase());
+        .map(opt => opt.id || opt.label.toLowerCase());
 
       const brands = brandOptions
         .filter(opt => opt.checked)
-        .map(opt => opt.label.toLowerCase());
+        .map(opt => opt.id || opt.label.toLowerCase());
 
       onFilterChange({ availability, categories, brands, maxPrice });
     }
@@ -83,11 +153,9 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
     const sliderWidth = rect.width;
     const offsetX = clientX - rect.left;
 
-    // Calculate percentage (0 to 1)
     let percentage = offsetX / sliderWidth;
     percentage = Math.max(0, Math.min(1, percentage));
 
-    // Calculate new price
     const newPrice = Math.round(percentage * highestProductPrice);
     setMaxPrice(newPrice);
   };
@@ -138,11 +206,9 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
     };
   }, [isDragging]);
 
-  // Calculate circle position (10.832 to 200.168)
-  const sliderWidth = 189.336; // 200.168 - 10.832
+  const sliderWidth = 189.336;
   const circleX = 10.832 + (maxPrice / highestProductPrice) * sliderWidth;
 
-  //  Reusable toggle handler with special logic for "All products"
   const toggleOption = (
     index: number,
     list: FilterOption[],
@@ -150,37 +216,28 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
     isAvailability: boolean = false
   ) => {
     setter((prev) => {
-      // Special handling for Availability section
       if (isAvailability) {
-        // If clicking "All products" (index 0)
         if (index === 0) {
-          // Check if any other option is selected
           const hasOtherSelected = prev.slice(1).some(opt => opt.checked);
 
-          // Only allow unchecking "All products" if other options are selected
           if (!hasOtherSelected && prev[0].checked) {
-            return prev; // Don't allow unchecking
+            return prev;
           }
 
-          // If unchecking "All products", keep other selections
-          // If checking "All products", uncheck others
           return prev.map((opt, i) =>
             i === 0
               ? { ...opt, checked: !opt.checked }
               : { ...opt, checked: prev[0].checked ? false : opt.checked }
           );
         } else {
-          // Clicking any other availability option
           const newState = prev.map((opt, i) =>
             i === index
               ? { ...opt, checked: !opt.checked }
-              : i === 0 ? { ...opt, checked: false } : opt // Uncheck "All products"
+              : i === 0 ? { ...opt, checked: false } : opt
           );
 
-          // Check if no options are selected now
           const anySelected = newState.slice(1).some(opt => opt.checked);
 
-          // If no options selected, auto-select "All products"
           if (!anySelected) {
             newState[0].checked = true;
           }
@@ -189,46 +246,56 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
         }
       }
 
-      // Default behavior for other sections
       return prev.map((opt, i) => (i === index ? { ...opt, checked: !opt.checked } : opt));
     });
   };
 
-  //  Reusable render block
   const renderOptionList = (
     title: string,
     options: FilterOption[],
     setter: React.Dispatch<React.SetStateAction<FilterOption[]>>,
-    isAvailability: boolean = false
+    isAvailability: boolean = false,
+    isLoading: boolean = false
   ) => (
     <div className="flex flex-col gap-3">
       <h2 className="font-noto-kr text-base font-medium uppercase leading-9">
         {title}
+        {isLoading && <span className="text-xs font-normal text-gray-500 ml-2">(Loading...)</span>}
       </h2>
 
-      {options.map((option, index) => (
-        <div
-          key={index}
-          onClick={() => toggleOption(index, options, setter, isAvailability)}
-          className={`flex items-center gap-3 px-2 py-1 rounded cursor-pointer transition-colors ${option.checked ? "bg-[rgba(255,77,109,0.10)]" : "hover:bg-gray-50"
-            }`}
-        >
-          <div
-            className={`w-5 h-5 rounded-sm border-2 flex items-center justify-center transition-colors ${option.checked
-              ? "border-[#FF4D6D] bg-[#FF4D6D]"
-              : "border-black bg-white"
-              }`}
-          >
-            {option.checked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-spin">
+            <div className="w-5 h-5 border-2 border-gray-300 border-t-black rounded-full"></div>
           </div>
-          <span
-            className={`text-sm capitalize leading-6 ${option.checked ? "text-black font-medium" : "text-gray-800"
+        </div>
+      ) : options.length === 0 ? (
+        <div className="text-sm text-gray-500 py-2">No {title.toLowerCase()} available</div>
+      ) : (
+        options.map((option, index) => (
+          <div
+            key={option.id || index}
+            onClick={() => toggleOption(index, options, setter, isAvailability)}
+            className={`flex items-center gap-3 px-2 py-1 rounded cursor-pointer transition-colors ${option.checked ? "bg-[rgba(255,77,109,0.10)]" : "hover:bg-gray-50"
               }`}
           >
-            {option.label}
-          </span>
-        </div>
-      ))}
+            <div
+              className={`w-5 h-5 rounded-sm border-2 flex items-center justify-center transition-colors ${option.checked
+                ? "border-[#FF4D6D] bg-[#FF4D6D]"
+                : "border-black bg-white"
+                }`}
+            >
+              {option.checked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+            </div>
+            <span
+              className={`text-sm capitalize leading-6 ${option.checked ? "text-black font-medium" : "text-gray-800"
+                }`}
+            >
+              {option.label}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   );
 
@@ -259,17 +326,14 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
                 onTouchStart={handleTouchStart}
                 preserveAspectRatio="none"
               >
-                {/* Background line */}
                 <path
                   d="M5.49878 6V7H205.501V6V5H5.49878V6Z"
                   fill="#E5E7EB"
                 />
-                {/* Active line (from start to current position) */}
                 <path
                   d={`M5.49878 6V7H${circleX}V6V5H5.49878V6Z`}
                   fill="black"
                 />
-                {/* Left circle (fixed) */}
                 <circle
                   cx="5.49878"
                   cy="6"
@@ -277,7 +341,6 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
                   fill="black"
                   className="pointer-events-none"
                 />
-                {/* Right circle (draggable) */}
                 <circle
                   cx={circleX}
                   cy="6"
@@ -289,13 +352,10 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
               </svg>
             </div>
 
-            {/* Price Range display */}
             <div className="flex justify-between items-center w-full">
-              {/* lower price */}
               <div className="flex w-fit h-6 px-1.5 items-center rounded bg-[#FAD7DD]">
                 <span className="text-xs text-black">LKR. 0</span>
               </div>
-              {/* higher price */}
               <div className="flex w-fit h-6 px-2 justify-center items-center gap-2 rounded bg-[#FAD7DD]">
                 <span className="text-xs text-black">{formatPrice(maxPrice)}</span>
               </div>
@@ -305,8 +365,8 @@ export function FilterSidebar({ onFilterChange, highestProductPrice = 1500000 }:
 
         {/* ---- Dynamic sections ---- */}
         {renderOptionList("Availability", availabilityOptions, setAvailabilityOptions, true)}
-        {renderOptionList("Category", categoryOptions, setCategoryOptions)}
-        {renderOptionList("Brand", brandOptions, setBrandOptions)}
+        {renderOptionList("Category", categoryOptions, setCategoryOptions, false, categoriesLoading)}
+        {renderOptionList("Brand", brandOptions, setBrandOptions, false, brandsLoading)}
       </div>
 
       {/* ---- Clear All ---- */}

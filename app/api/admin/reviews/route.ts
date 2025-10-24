@@ -1,121 +1,138 @@
+// app/api/admin/reviews/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import Review from "@/models/review";
-import { verifyAdminAuth } from "@/app/api/admin/auth/route";
+import Review, { IReview } from "@/models/review";
+import { getServerSession } from "next-auth";
+import authOptions from "@/lib/authOptions";
+import User from "@/models/user";
 
 export async function GET(request: NextRequest) {
   try {
-    const authCheck = await verifyAdminAuth();
-    if (!authCheck.isValid) {
-      return NextResponse.json({ error: authCheck.error }, { status: 401 });
+    // Check if user is admin
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const user = await User.findOne({ email: session.user.email });
+    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden - Admin access required" },
+        { status: 403 }
+      );
     }
 
     await dbConnect();
 
-    const searchParams = request.nextUrl.searchParams;
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const search = searchParams.get("search") || "";
-    const approved = searchParams.get("approved");
-
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "10", 10);
     const skip = (page - 1) * limit;
 
-    let query: any = {};
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { content: { $regex: search, $options: "i" } },
-      ];
-    }
-    if (approved !== null && approved !== undefined) {
-      query.isApproved = approved === "true";
-    }
-
-    const total = await Review.countDocuments(query);
-    const reviews = await Review.find(query)
-      .populate("author", "name email")
-      .populate("products", "name sku")
+    // Get all reviews (including unapproved)
+    const reviews = await Review.find({})
+      .populate("user", "name email profilePicture")
+      .populate("product", "name thumbnail")
       .sort({ createdAt: -1 })
+      .limit(limit)
       .skip(skip)
-      .limit(limit);
+      .lean();
+
+    const totalReviews = await Review.countDocuments({});
+
+    // Format response to show product and user details
+    const formattedReviews = reviews.map((review) => ({
+      _id: review._id,
+      productName: review.productName,
+      userName: review.userName,
+      userEmail: review.userEmail,
+      rating: review.rating,
+      title: review.title,
+      reviewText: review.reviewText,
+      productVariant: review.productVariant,
+      createdAt: review.createdAt,
+      isApproved: review.isApproved,
+      productThumbnail: review.product?.thumbnail || review.productThumbnail,
+      userAvatar: review.user?.profilePicture || review.userAvatar ,
+    }));
 
     return NextResponse.json(
       {
         success: true,
-        data: reviews,
-        pagination: {
-          total,
+        data: {
+          reviews: formattedReviews,
+          totalReviews,
           page,
           limit,
-          pages: Math.ceil(total / limit),
+          totalPages: Math.ceil(totalReviews / limit),
         },
       },
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("Error fetching reviews:", error);
+    console.error("Error fetching admin reviews:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch reviews" },
+      { success: false, error: error.message || "Failed to fetch reviews" },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+// PATCH - Approve/Unapprove a review
+export async function PATCH(request: NextRequest) {
   try {
-    const authCheck = await verifyAdminAuth();
-    if (!authCheck.isValid) {
-      return NextResponse.json({ error: authCheck.error }, { status: 401 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const user = await User.findOne({ email: session.user.email });
+    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden - Admin access required" },
+        { status: 403 }
+      );
     }
 
     await dbConnect();
+
     const body = await request.json();
+    const { reviewId, isApproved } = body;
 
-    const {
-      title,
-      content,
-      rating,
-      author,
-      products,
-      isVerifiedPurchase,
-      isApproved,
-    } = body;
-
-    if (!title || !content || !rating || !author || !products) {
+    if (!reviewId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { success: false, error: "Review ID is required" },
         { status: 400 }
       );
     }
 
-    const review = new Review({
-      title,
-      content,
-      rating,
-      author,
-      products: Array.isArray(products) ? products : [products],
-      isVerifiedPurchase: isVerifiedPurchase || false,
-      isApproved: isApproved || false,
-    });
+    const review = await Review.findByIdAndUpdate(
+      reviewId,
+      { isApproved },
+      { new: true }
+    );
 
-    await review.save();
-    await review.populate([
-      { path: "author", select: "name email" },
-      { path: "products", select: "name sku" },
-    ]);
+    if (!review) {
+      return NextResponse.json(
+        { success: false, error: "Review not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
-      {
-        success: true,
-        message: "Review created successfully",
-        data: review,
-      },
-      { status: 201 }
+      { success: true, message: "Review updated successfully", data: review },
+      { status: 200 }
     );
   } catch (error: any) {
-    console.error("Error creating review:", error);
+    console.error("Error updating review:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create review" },
+      { success: false, error: error.message || "Failed to update review" },
       { status: 500 }
     );
   }

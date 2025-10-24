@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Search, X } from "lucide-react";
 import Image from "next/image";
 import DeleteConfirmModal from "@/components/Deleteconfirmmodal";
 import { toast } from "sonner";
@@ -21,8 +21,8 @@ interface Product {
   sku: string;
   price: number;
   stock: number;
-  brand: { name: string } | string;
-  category: { name: string } | string;
+  brand: { name: string; _id?: string } | string;
+  category: { name: string; _id?: string } | string;
   thumbnail?: string;
   isActive: boolean;
   isCouponDeal: boolean;
@@ -30,6 +30,12 @@ interface Product {
   isComingSoon: boolean;
   applicableCoupons?: string[];
   applicableCouponDetails?: CouponInfo[];
+}
+
+interface FilterOption {
+  _id?: string;
+  id?: string;
+  name: string;
 }
 
 const ProductsPage = () => {
@@ -42,6 +48,15 @@ const ProductsPage = () => {
   const [total, setTotal] = useState(0);
   const [hoveredCouponProductId, setHoveredCouponProductId] = useState<string | null>(null);
 
+  // Filter states
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [brandFilter, setBrandFilter] = useState("all");
+
+  // Options for dropdowns
+  const [categories, setCategories] = useState<FilterOption[]>([]);
+  const [brands, setBrands] = useState<FilterOption[]>([]);
+
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
@@ -50,9 +65,35 @@ const ProductsPage = () => {
   });
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Fetch categories and brands on mount
+  useEffect(() => {
+    fetchFilterOptions();
+  }, []);
+
+  // Fetch products when filters change
   useEffect(() => {
     fetchProducts();
-  }, [page, search]);
+  }, [page, search, availabilityFilter, categoryFilter, brandFilter]);
+
+  const fetchFilterOptions = async () => {
+    try {
+      // Fetch categories
+      const categoriesRes = await fetch("/api/admin/categories");
+      const categoriesData = await categoriesRes.json();
+      if (categoriesData.success && categoriesData.data) {
+        setCategories(categoriesData.data || []);
+      }
+
+      // Fetch brands
+      const brandsRes = await fetch("/api/admin/brands");
+      const brandsData = await brandsRes.json();
+      if (brandsData.success && brandsData.data) {
+        setBrands(brandsData.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching filter options:", error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -62,6 +103,21 @@ const ProductsPage = () => {
         limit: "10",
         search: search,
       });
+
+      // Add availability filter
+      if (availabilityFilter !== "all") {
+        query.append("availability", availabilityFilter);
+      }
+
+      // Add category filter - use _id or id
+      if (categoryFilter !== "all") {
+        query.append("category", categoryFilter);
+      }
+
+      // Add brand filter - use _id or id
+      if (brandFilter !== "all") {
+        query.append("brand", brandFilter);
+      }
 
       const response = await fetch(`/api/admin/products?${query}`);
       const data = await response.json();
@@ -125,6 +181,27 @@ const ProductsPage = () => {
     }
   };
 
+  const handleResetFilters = () => {
+    setAvailabilityFilter("all");
+    setCategoryFilter("all");
+    setBrandFilter("all");
+    setSearch("");
+    setPage(1);
+  };
+
+  const hasActiveFilters = availabilityFilter !== "all" || categoryFilter !== "all" || brandFilter !== "all" || search !== "";
+
+  // Helper to get unique ID from category/brand (handles both _id and id)
+  const getOptionId = (option: FilterOption): string => {
+    return option._id || option.id || "";
+  };
+
+  // Helper to get option name by ID
+  const getOptionName = (optionId: string, options: FilterOption[]): string => {
+    const option = options.find(o => (o._id || o.id) === optionId);
+    return option?.name || optionId;
+  };
+
   // Helper function to safely get brand name
   const getBrandName = (brand: Product["brand"]): string => {
     if (!brand) return "N/A";
@@ -173,6 +250,121 @@ const ProductsPage = () => {
         </Link>
       </div>
 
+      {/* Filter Dropdowns */}
+      <div className="bg-white rounded-lg shadow-md border border-pink-100 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Availability Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status
+            </label>
+            <select
+              value={availabilityFilter}
+              onChange={(e) => {
+                setAvailabilityFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="coupon">Coupon Deals</option>
+              <option value="today">Today Deals</option>
+              <option value="coming">Coming Soon</option>
+            </select>
+          </div>
+
+          {/* Category Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Category
+            </label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((category) => {
+                const categoryId = getOptionId(category);
+                return (
+                  <option key={categoryId} value={categoryId}>
+                    {category.name}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Brand Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Brand
+            </label>
+            <select
+              value={brandFilter}
+              onChange={(e) => {
+                setBrandFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink"
+            >
+              <option value="all">All Brands</option>
+              {brands.map((brand) => {
+                const brandId = getOptionId(brand);
+                return (
+                  <option key={brandId} value={brandId}>
+                    {brand.name}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Reset Button */}
+          <div className="flex items-end">
+            <button
+              onClick={handleResetFilters}
+              disabled={!hasActiveFilters}
+              className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              <X size={18} /> Reset
+            </button>
+          </div>
+        </div>
+
+        {/* Active Filters Display */}
+        {hasActiveFilters && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="text-sm text-gray-600">Active filters:</span>
+            {search && (
+              <span className="px-2 py-1 bg-pink-100 text-pink-700 rounded-full text-xs">
+                Search: {search}
+              </span>
+            )}
+            {availabilityFilter !== "all" && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                Status: {availabilityFilter}
+              </span>
+            )}
+            {categoryFilter !== "all" && (
+              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                Category: {getOptionName(categoryFilter, categories)}
+              </span>
+            )}
+            {brandFilter !== "all" && (
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                Brand: {getOptionName(brandFilter, brands)}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="bg-white rounded-lg shadow-md border border-pink-100 overflow-x-auto">
         <table className="w-full">
           <thead className="bg-pink-50 border-b border-brand-pink">
@@ -209,10 +401,8 @@ const ProductsPage = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-pink"></div>
-                  </div>
+                <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                  Loading...
                 </td>
               </tr>
             ) : products.length === 0 ? (
@@ -303,14 +493,14 @@ const ProductsPage = () => {
                             </div>
 
                             <div className="font-semibold mb-2 text-blue-300">
-                               Active Coupons:
+                              Active Coupons:
                             </div>
 
                             <div className="space-y-2">
                               {product.applicableCoupons.map((code, idx) => (
-                                <div key={idx} className="bg-gray-700 rounded p-2">
+                                <div key={`${product._id}-${idx}`} className="bg-gray-700 rounded p-2">
                                   <div className="font-medium text-white">
-                                     {code}
+                                    {code}
                                   </div>
                                   {product.applicableCouponDetails &&
                                     product.applicableCouponDetails[idx] && (

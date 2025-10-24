@@ -1,73 +1,94 @@
-import mongoose, { Document, Schema } from "mongoose";
+// models/review.ts
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface IReview extends Document {
-  title: string;
-  content: string;
-  rating: number;
-  author: mongoose.Types.ObjectId;
-  products: mongoose.Types.ObjectId[];
-  isVerifiedPurchase: boolean;
-  isApproved: boolean;
-  helpful: number;
-  unhelpful: number;
+  _id: string;
+  product: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
+  rating: number; // 1-5
+  title?: string;
+  reviewText: string;
+  userEmail: string;
+  userName: string;
+  userAvatar?: string;
+  productThumbnail?: string;
+  productName: string;
+  productVariant?: string;
   createdAt: Date;
   updatedAt: Date;
+  isApproved: boolean; // Admin approval
 }
 
-const ReviewSchema = new Schema<IReview>(
+const ReviewSchema: Schema = new Schema(
   {
-    title: {
-      type: String,
-      required: [true, "Review title is required"],
-      trim: true,
-      minlength: [3, "Title must be at least 3 characters"],
-      maxlength: [100, "Title must not exceed 100 characters"],
+    product: {
+      type: Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
     },
-    content: {
-      type: String,
-      required: [true, "Review content is required"],
-      minlength: [10, "Content must be at least 10 characters"],
-      maxlength: [5000, "Content must not exceed 5000 characters"],
-    },
-    rating: {
-      type: Number,
-      required: [true, "Rating is required"],
-      enum: [1, 2, 3, 4, 5],
-      default: 5,
-    },
-    author: {
+    user: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    products: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Product",
-        required: true,
-      },
-    ],
-    isVerifiedPurchase: {
-      type: Boolean,
-      default: false,
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+      enum: [1, 2, 3, 4, 5],
+    },
+    title: {
+      type: String,
+      trim: true,
+    },
+    reviewText: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 1000,
+    },
+    userEmail: {
+      type: String,
+      required: true,
+      lowercase: true,
+    },
+    userName: {
+      type: String,
+      required: true,
+    },
+    userAvatar: {
+      type: String,
+      default: null,
+    },
+    productName: {
+      type: String,
+      required: true,
+    },
+    productVariant: {
+      type: String,
+      default: null,
     },
     isApproved: {
       type: Boolean,
-      default: false,
+      default: true, // Auto-approve for now, can be changed to false for moderation
     },
-    helpful: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    unhelpful: {
-      type: Number,
-      default: 0,
-      min: 0,
+    productThumbnail: {
+      type: String,
+      default: null,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-export default mongoose.models.Review ||
-  mongoose.model<IReview>("Review", ReviewSchema);
+// Prevent duplicate reviews from the same user for the same product
+ReviewSchema.index({ product: 1, user: 1 }, { unique: true });
+
+// Prevent multiple collections with the same name
+const Review =
+  mongoose.models.Review || mongoose.model<IReview>("Review", ReviewSchema);
+
+export default Review;

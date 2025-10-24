@@ -19,29 +19,54 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const brand = searchParams.get("brand");
     const category = searchParams.get("category");
+    const availability = searchParams.get("availability");
 
     const skip = (page - 1) * limit;
 
+    // Build query filter
     let query: any = {};
+
+    // Search filter
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { sku: { $regex: search, $options: "i" } },
       ];
     }
-    if (brand) query.brand = brand;
-    if (category) query.category = category;
 
-    const total = await Product.countDocuments(query);
-    const products = await Product.find(query)
-      .populate("brand", "name")
-      .populate("category", "name")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    // Category filter
+    if (category && category !== "all") {
+      query.category = category;
+    }
 
-    // Get all active coupons with their applicable products, categories, and brands
+    // Brand filter
+    if (brand && brand !== "all") {
+      query.brand = brand;
+    }
+
+    // Availability/Status filter
+    if (availability && availability !== "all") {
+      switch (availability) {
+        case "active":
+          query.isActive = true;
+          break;
+        case "inactive":
+          query.isActive = false;
+          break;
+        case "today":
+          query.isTodayDeal = true;
+          break;
+        case "coming":
+          query.isComingSoon = true;
+          break;
+        case "coupon":
+          // For coupon deals, we'll handle this after fetching active coupons
+          // Don't add to query yet - we'll filter after getting coupon data
+          break;
+      }
+    }
+
+    // Get all active coupons if we need to filter by coupon or enrich data
     const now = new Date();
     const activeCoupons = await Coupon.find({
       isActive: true,
@@ -77,6 +102,68 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // If filtering by coupon deals, add query to get products with any coupon
+    if (availability === "coupon") {
+      // Build OR query for products that have ANY coupon
+      const couponQueryConditions: any[] = [];
+
+      if (productIdsWithCoupons.size > 0) {
+        couponQueryConditions.push({ _id: { $in: Array.from(productIdsWithCoupons) } });
+      }
+
+      if (categoryIdsWithCoupons.size > 0) {
+        couponQueryConditions.push({ category: { $in: Array.from(categoryIdsWithCoupons) } });
+      }
+
+      if (brandIdsWithCoupons.size > 0) {
+        couponQueryConditions.push({ brand: { $in: Array.from(brandIdsWithCoupons) } });
+      }
+
+      // If there are coupon conditions, apply them
+      if (couponQueryConditions.length > 0) {
+        // Merge with existing $or query if present
+        if (query.$or) {
+          query = {
+            $and: [
+              { $or: query.$or },
+              { $or: couponQueryConditions }
+            ]
+          };
+          delete query.$or;
+        } else {
+          query.$or = couponQueryConditions;
+        }
+      } else {
+        // No coupons available, return empty result
+        return NextResponse.json(
+          {
+            success: true,
+            data: [],
+            pagination: {
+              total: 0,
+              page,
+              limit,
+              pages: 0,
+            },
+            message: "No products with active coupons found",
+          },
+          { status: 200 }
+        );
+      }
+    }
+
+    // Count total matching documents
+    const total = await Product.countDocuments(query);
+
+    // Fetch products with filters
+    const products = await Product.find(query)
+      .populate("brand", "name")
+      .populate("category", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
     // Map products and add coupon status based on active coupons
     const productsWithCouponStatus = products.map((product: any) => {
       const productIdStr = product._id.toString();
@@ -88,12 +175,11 @@ export async function GET(request: NextRequest) {
       // 2. Category match
       // 3. Brand match
       const hasCoupon =
-        product.isCouponDeal ||
         productIdsWithCoupons.has(productIdStr) ||
         (categoryIdStr && categoryIdsWithCoupons.has(categoryIdStr)) ||
         (brandIdStr && brandIdsWithCoupons.has(brandIdStr));
 
-      // Collect all applicable coupon codes for this product
+      // Collect all applicable coupon codes and details for this product
       const applicableCoupons = activeCoupons
         .filter((coupon) => {
           // Check if product is in applicableProducts

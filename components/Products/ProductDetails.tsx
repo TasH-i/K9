@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Heart, Share2, ChevronDown, Book, Star, ChevronUp, Check } from "lucide-react";
 import ReviewModal from "./ReviewModal";
 import { useSession } from "next-auth/react";
-
+import { useCart } from "@/lib/hooks/useCart";
+import { toast } from "sonner";
 
 interface ProductAttribute {
     name: string;
@@ -135,6 +136,7 @@ interface ProductDetailsProps {
 
 export default function ProductDetails({ product }: ProductDetailsProps) {
     const { data: session } = useSession();
+    const { addToCart } = useCart();
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
     const [selectedOption, setSelectedOption] = useState(product.options?.[0]?.values?.[0] || "");
@@ -149,6 +151,18 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     const [reviewError, setReviewError] = useState("");
 
     const productImages = product.images && product.images.length > 0 ? product.images : [product.thumbnail];
+    const handleAddToCart = async () => {
+        try {
+            await addToCart(product, quantity, selectedOption);
+
+            // The hook itself shows toast success/info for add/duplicate,
+            // so you don’t need to add another success toast here.
+            // Only catch errors explicitly:
+        } catch (error) {
+            console.error("Add to cart failed:", error);
+            toast.error("Failed to add item to cart");
+        }
+    };
 
     // Fetch reviews
     useEffect(() => {
@@ -458,7 +472,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                                <button className="flex-1 h-11 cursor-pointer py-2 md:h-12 bg-white border-2 border-brand-pink text-brand-pink rounded font-medium hover:bg-pink-50 transition-colors hover:scale-105 transition-transform text-sm sm:text-base">
+                                <button onClick={handleAddToCart} className="flex-1 h-11 cursor-pointer py-2 md:h-12 bg-white border-2 border-brand-pink text-brand-pink rounded font-medium hover:bg-pink-50 transition-colors hover:scale-105 transition-transform text-sm sm:text-base">
                                     Add to Cart
                                 </button>
                                 <button className="flex-1 h-11 cursor-pointer py-2 md:h-12 bg-brand-pink text-white rounded font-medium hover:scale-105 transition-transform text-sm sm:text-base">

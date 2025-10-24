@@ -60,9 +60,9 @@ export function ProductCardHorizontal({
         }
 
         addToCart(cartItem, 1);
-        toast.success(`${name} added to cart!`, {
-            icon: <ShoppingCart className="w-4 h-4" />,
-        });
+        // toast.success(`${name} added to cart!`, {
+        //     icon: <ShoppingCart className="w-4 h-4" />,
+        // });
     };
 
     return (
@@ -145,9 +145,9 @@ export function ProductCardVertical({
         }
 
         addToCart(cartItem, 1);
-        toast.success(`${name} added to cart!`, {
-            icon: <ShoppingCart className="w-4 h-4" />,
-        });
+        // toast.success(`${name} added to cart!`, {
+        //     icon: <ShoppingCart className="w-4 h-4" />,
+        // });
     };
 
     return (

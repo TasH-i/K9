@@ -61,9 +61,9 @@ export default function CouponCard({
 
         try {
             addToCart(cartItem, 1);
-            toast.success(`${name} added to cart!`, {
-                icon: <ShoppingCart className="w-4 h-4" />,
-            });
+            // toast.success(`${name} added to cart!`, {
+            //     icon: <ShoppingCart className="w-4 h-4" />,
+            // });
         } catch (error) {
             toast.error("Failed to add item to cart");
         }

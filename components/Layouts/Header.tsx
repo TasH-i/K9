@@ -3,16 +3,9 @@ import { ShoppingCart, User, Menu, Search, ChevronDown, LogIn, Heart, UserPlus, 
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
 
-const categories = [
-  { title: "Electronics", image: "/category/electro.png" },
-  { title: "Fashion", image: "/category/fashion.png" },
-  { title: "Baby Products", image: "/category/baby.png" },
-  { title: "Personal Care", image: "/category/personal.png" },
-  { title: "Foods", image: "/category/food.png" },
-  { title: "Furniture", image: "/category/fur.png" },
-  { title: "Sports", image: "/category/sport.png" },
-];
 
 export default function Header() {
   const router = useRouter();
@@ -23,6 +16,12 @@ export default function Header() {
   const [userName, setUserName] = useState("");
   const [userProfilePicture, setUserProfilePicture] = useState("");
   const [userRole, setUserRole] = useState("");
+
+  const cartTotalItems = useSelector((state: RootState) => state.cart.totalItems);
+  const [displayCartCount, setDisplayCartCount] = useState(0);
+
+  const [categories, setCategories] = useState<{ _id: string; name: string; image: string; slug: string; description?: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   // Check login status on component mount
   useEffect(() => {
@@ -38,6 +37,44 @@ export default function Header() {
     return () => {
       window.removeEventListener('user-data-updated', handleUserDataUpdate);
     };
+  }, []);
+
+  // Listen for cart updates from custom event
+  useEffect(() => {
+    const handleCartUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { totalItems } = customEvent.detail;
+      setDisplayCartCount(totalItems);
+    };
+
+    window.addEventListener('cart-updated', handleCartUpdate);
+
+    // Initialize with current cart count from Redux
+    setDisplayCartCount(cartTotalItems);
+
+    return () => {
+      window.removeEventListener('cart-updated', handleCartUpdate);
+    };
+  }, [cartTotalItems]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/categories");
+        const data = await res.json();
+        if (data.success) {
+          setCategories(data.data);
+        } else {
+          console.error("Failed to load categories:", data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
   const checkLoginStatus = () => {
@@ -160,7 +197,7 @@ export default function Header() {
         </div>
 
         {/* Icons */}
-         <div className="flex items-center gap-3 md:gap-6 lg:gap-12">
+        <div className="flex items-center gap-3 md:gap-6 lg:gap-12">
           {/* user profile button */}
           <div className="relative">
             <button
@@ -181,7 +218,7 @@ export default function Header() {
                 <User className="w-6 h-6" />
               )}
             </button>
-            
+
             {/* Admin Badge */}
             {isLoggedIn && userRole === 'admin' && (
               <div className="absolute -top-2 -right-2 w-5 h-5 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center shadow-lg">
@@ -190,11 +227,14 @@ export default function Header() {
             )}
           </div>
 
-          <button className="relative w-9 h-9 rounded bg-gray-100 flex items-center justify-center cursor-pointer">
+          <button onClick={() => router.push("/cart")} className="relative w-9 h-9 rounded bg-gray-100 flex items-center justify-center cursor-pointer">
             <ShoppingCart className="w-6 h-6" />
-            <div className="absolute top-[5px] right-[5px] w-3 h-3 bg-[#FF4D6D] rounded-full flex items-center justify-center">
-              <span className="text-[10px] text-black font-roboto">0</span>
-            </div>
+            {/* User Cart Items Count badge */}
+            {displayCartCount > 0 && (
+              <div className="absolute top-[2px] right-[2px] w-4 h-4 bg-[#FF4D6D] rounded-full flex items-center justify-center">
+                <span className="text-[10px] text-white font-roboto"> {displayCartCount > 99 ? '99+' : displayCartCount}</span>
+              </div>
+            )}
           </button>
           <button
             onClick={toggleMenu}
@@ -238,23 +278,25 @@ export default function Header() {
         <div className="max-h-[calc(100vh-200px)] overflow-y-auto hide-scrollbar">
           {categories.map((category, index) => (
             <Link
-              key={index}
-              href={`/category/${category.title.toLowerCase().replace(/\s+/g, '-')}`}
+              key={category._id || index}
+              href={`/shop`}
               onClick={toggleMenu}
               className="flex items-center gap-3 px-5 py-3 hover:bg-brand-pink/15 transition-colors cursor-pointer group"
             >
               <div className="w-10 h-8 flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img
                   src={category.image}
-                  alt={category.title}
+                  alt={category.name}
                   className="w-9 h-9 object-contain group-hover:scale-110 transition-transform duration-200"
                 />
               </div>
               <span className="text-sm font-medium text-gray-800 group-hover:text-[#FF4D6D] transition-colors">
-                {category.title}
+                {category.name}
               </span>
             </Link>
           ))}
+
+
         </div>
       </div>
 

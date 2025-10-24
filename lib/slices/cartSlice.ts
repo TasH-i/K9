@@ -167,6 +167,15 @@ const cartSlice = createSlice({
         }
       }
     },
+
+    // Batch update cart items (useful for syncing from server)
+    setCartItems: (state, action: PayloadAction<CartItem[]>) => {
+      state.items = action.payload;
+      const { totalItems, totalPrice } = calculateTotals(state.items);
+      state.totalItems = totalItems;
+      state.totalPrice = totalPrice;
+      state.lastUpdated = Date.now();
+    },
   },
 });
 
@@ -177,6 +186,7 @@ export const {
   clearCart,
   syncCart,
   initializeCart,
+  setCartItems,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

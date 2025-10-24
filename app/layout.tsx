@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import SessionProvider from "@/components/SessionProvider";
 import AdminDashboardButton from "@/components/AdminDashboardButton";
 import Providers from "@/components/Providers";
+import ClientRootProvider from "@/components/ClientRootProvider";
 
 const notoSans = Noto_Sans({
   variable: "--font-body",
@@ -36,20 +37,22 @@ export default function RootLayout({
       >
         <SessionProvider>
           <Providers>
-            <Toaster
-              richColors
-              position="top-right"
-              closeButton
-              duration={3000}
-              toastOptions={{
-                classNames: {
-                  toast:
-                    "rounded-lg shadow-lg border border-gray-200 font-medium text-sm",
-                },
-              }}
-            />
-            <ConditionalLayout>{children}</ConditionalLayout>
-            <AdminDashboardButton />
+            <ClientRootProvider>
+              <Toaster
+                richColors
+                position="top-right"
+                closeButton
+                duration={3000}
+                toastOptions={{
+                  classNames: {
+                    toast:
+                      "rounded-lg shadow-lg border border-gray-200 font-medium text-sm",
+                  },
+                }}
+              />
+              <ConditionalLayout>{children}</ConditionalLayout>
+              <AdminDashboardButton />
+            </ClientRootProvider>
           </Providers>
         </SessionProvider>
       </body>

@@ -31,7 +31,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Coupons", icon: Percent, href: "/admin/coupons" },
     { name: "Products", icon: Package, href: "/admin/products" },
     { name: "Reviews", icon: MessageSquare, href: "/admin/reviews" },
-    { name: "Orders", icon: ShoppingCart, href: "/admin/orders" },
+    // { name: "Orders", icon: ShoppingCart, href: "/admin/orders" },
     { name: "Users", icon: Users, href: "/admin/users" },
   ];
 
